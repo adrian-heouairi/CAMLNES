@@ -6,6 +6,10 @@ La NES, ou Famicom au Japon, est une console de jeux sortie entre 1983 et 1987 s
 
 L'émulation de cette console sur un ordinateur moderne est un défi très intéressant, nécessitant la gestion en parallèle et la synchronisation des divers composants de la console.
 
+## Originalité du projet
+
+La quasi-totalité des émulateurs étant programmés avec un langage impératif comme le C, en programmer un dans un langage fonctionnel constitue un défi technique très intéressant.
+
 ## Objectifs
 
 L'objectif principal est de rendre jouables au clavier les jeux NES utilisant le _mapper_ 0, comme Donkey Kong ou Super Mario Bros., dans leur version américaine. Le langage de programmation choisi est OCaml.
