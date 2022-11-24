@@ -1,3 +1,7 @@
 Émulateur de NES en OCaml
 
 Adrian HEOUAIRI adrian.heouairi@etu.u-paris.fr
+
+
+<24/11/2022>
+Faire un plan du projet, représentation des données, etc.
