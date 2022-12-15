@@ -5,3 +5,14 @@ Adrian HEOUAIRI adrian.heouairi@etu.u-paris.fr
 
 <24/11/2022>
 Faire un plan du projet, représentation des données, etc.
+
+
+<15/12/2022>
+FAIT :
+  - documentation sur l'architecture de la NES
+    + il faudra émuler le CPU, la puce graphique, la puce audio, le bus
+À FAIRE :
+  - se concentrer sur le CPU (pas le GPU pour l'instant)
+  - utiliser des cartouches qui testent des fonctionnalités du CPU
+  - mettre en place une infrastructure de tests (gitliba-ci, ou juste un script de tests) 
+  - quelles structures de données OCaml choisir (e.g. pour le bus)
