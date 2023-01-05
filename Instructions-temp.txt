@@ -1,0 +1,18 @@
+Install opam and run opam init
+
+git clone https://gaufre.informatique.univ-paris-diderot.fr/heouairi/heouairi-plong-2022.git
+
+cd heouairi-plong-2022/CAMLNES
+
+opam switch create .
+
+eval $(opam env)
+
+Optional: install the Visual Studio Code "OCaml Platform" extension and its dependencies: opam install ocaml-lsp-server ocamlformat ocamlformat-rpc (for now required since it installs dune which is required)
+
+(Only at the beginning of the project: cd ..; dune init project CAMLNES)
+
+dune build
+dune build --watch --terminal-persistence=clear-on-rebuild # To keep VSCode consistent
+
+dune exec _build/default/bin/main.exe
