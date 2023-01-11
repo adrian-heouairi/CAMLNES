@@ -16,3 +16,15 @@ FAIT :
   - utiliser des cartouches qui testent des fonctionnalités du CPU
   - mettre en place une infrastructure de tests (gitliba-ci, ou juste un script de tests) 
   - quelles structures de données OCaml choisir (e.g. pour le bus)
+  
+<11/01/2023>
+FAIT :
+- documenté sur le processeur de la NES (6502) et son jeu d'instructions ainsi que la carte graphique
+- début d'implementation (jeu d'instructions, modes d'adressage…)
+À FAIRE :
+- réfléchir à utiliser plus d'aspects fonctionnels (fonctions plutôt que tables de hashage par exemple)
+- regarder les variants poymorphes (pour les couples instruction, mode d'adressage)
+- voir où les GADTs sont utilisés dans l'émulateur Gboy
+- terminer le CPU
+- implémenter le bus (array) (simple)
+- ouvrir/charger un fichier NES
