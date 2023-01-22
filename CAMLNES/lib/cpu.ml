@@ -1,6 +1,4 @@
-open Opcodes
-
-let bus_temp = Array.make 0xFFFF 0;;
+open Cpu_instructions
 
 type cpu_state = {
   mutable accumulator : int;
@@ -9,238 +7,451 @@ type cpu_state = {
   mutable program_counter : int;
   mutable stack_pointer : int;
 
-  mutable carry_flag : bool;
+  (* The status register (P) *)
+  mutable carry_flag : bool; (* Bit 0 *)
   mutable zero_flag : bool;
   mutable interrupt_disable_flag : bool;
   mutable decimal_mode_flag : bool;
-  mutable break_command_flag : bool;
+  (* Bit 4 *)
+  (* Bit 5: always 1 *)
   mutable overflow_flag : bool;
-  mutable negative_flag : bool
+  mutable negative_flag : bool; (* Bit 7 *)
+
+  mutable nmi : bool;
+  mutable nmi_launched : bool;
+
+  mutable log : out_channel;
+  mutable logging : bool;
 };;
 
-let cpu_state = {
+let state = {
   accumulator = 0;
   index_register_X = 0;
   index_register_Y = 0;
-  program_counter = 0x8000; (* TODO: set this to what is contained in $FFFC in the cartridge *)
-  stack_pointer = 0xFF;
+  program_counter = -1; (* Set this to what is contained in $FFFC in the cartridge *)
+  stack_pointer = 0xFD;
 
   carry_flag = false;
   zero_flag = false;
   interrupt_disable_flag = true;
   decimal_mode_flag = false;
-  break_command_flag = false;
   overflow_flag = false;
   negative_flag = false;
+
+  nmi = false;
+  nmi_launched = false;
+
+  log = stdout;
+  logging = false;
 };;
 
-let _ADC (calculated_address, byte_at_address) =
-  let carry = if cpu_state.carry_flag then 1 else 0 in
-  let temp = cpu_state.accumulator + byte_at_address + carry in
-  let () = cpu_state.carry_flag <- temp > 255 in
-  let () = cpu_state.zero_flag <- temp = 0 in
-  let temp = temp mod 256 in
-  let () = cpu_state.overflow_flag <- ((cpu_state.accumulator lxor temp) land (byte_at_address lxor temp) land 0x80) <> 0 in
-  let () = cpu_state.negative_flag <- temp > 127 in
-  cpu_state.accumulator <- temp;;
+(*let log_filename = Sys.argv.(0) ^ "-cpu.log";;*)
 
-let _AND (calculated_address, byte_at_address) = ()
+let enable_logging filename =
+  state.logging <- true;
+  if filename = "" then
+    state.log <- stdout
+  else
+    state.log <- open_out_bin filename;;
 
-let _ASL (calculated_address, byte_at_address) = ()
+let status_to_byte () =
+  Bool.to_int state.carry_flag * 1 +
+  Bool.to_int state.zero_flag * 2 +
+  Bool.to_int state.interrupt_disable_flag * 4 +
+  Bool.to_int state.decimal_mode_flag * 8 +
+  (* Bit 4 has to be 0 when pushing to stack because of IRQ or NMI and 1 for PHP and BRK *)
+  1 * 32 +
+  Bool.to_int state.overflow_flag * 64 +
+  Bool.to_int state.negative_flag * 128;;
 
-let _BCC (calculated_address, byte_at_address) = ()
+let byte_to_status byte =
+  state.carry_flag <- byte land 1 > 0;
+  state.zero_flag <- byte land 2 > 0;
+  state.interrupt_disable_flag <- byte land 4 > 0;
+  state.decimal_mode_flag <- byte land 8 > 0;
+  
 
-let _BCS (calculated_address, byte_at_address) = ()
+  state.overflow_flag <- byte land 64 > 0;
+  state.negative_flag <- byte land 128 > 0;;
 
-let _BEQ (calculated_address, byte_at_address) = ()
+let stack_push byte =
+  Bus.write (0x0100 lor state.stack_pointer) byte;
+  state.stack_pointer <- state.stack_pointer - 1;
+  if state.stack_pointer = -1 then state.stack_pointer <- 255;;
 
-let _BIT (calculated_address, byte_at_address) = ()
+let stack_pull () =
+  state.stack_pointer <- (state.stack_pointer + 1) mod 256;
+  Bus.read (0x0100 lor state.stack_pointer);;
 
-let _BMI (calculated_address, byte_at_address) = ()
+let get_nth_bit bit number = number land (1 lsl bit) > 0;;
 
-let _BNE (calculated_address, byte_at_address) = ()
+let set_zero_and_negative_flags byte =
+  state.zero_flag <- byte = 0;
+  state.negative_flag <- byte > 127;;
 
-let _BPL (calculated_address, byte_at_address) = ()
+let branch byte =
+  let offset = if byte < 128 then byte else byte - 256 in
+  state.program_counter <- state.program_counter + offset;;
 
-let _BRK (calculated_address, byte_at_address) = ()
+let _ADC (calculated_addr, byte_at_addr) =
+  let addition = state.accumulator + byte_at_addr + Bool.to_int state.carry_flag in
+  state.carry_flag <- addition > 255;
+  state.overflow_flag <- (lnot (state.accumulator lxor byte_at_addr)) land (state.accumulator lxor addition) land 0x80 > 0;
+  let addition = addition mod 256 in
+  set_zero_and_negative_flags addition;
+  state.accumulator <- addition;;
 
-let _BVC (calculated_address, byte_at_address) = ()
+let _AND (calculated_addr, byte_at_addr) =
+  state.accumulator <- state.accumulator land byte_at_addr;
+  state.zero_flag <- state.accumulator = 0;
+  state.negative_flag <- state.accumulator > 127
 
-let _BVS (calculated_address, byte_at_address) = ()
+let _ASL (calculated_addr, byte_at_addr) =
+  let value = if calculated_addr = -1 then state.accumulator else byte_at_addr in
+  let () = state.carry_flag <- value land 128 > 0 in
+  let value2 = (value * 2) land 255 in
+  let () = state.zero_flag <- value2 = 0 in
+  let () = state.negative_flag <- value2 > 127 in
+  if calculated_addr = -1 then state.accumulator <- value2 else Bus.write calculated_addr value2
 
-let _CLC (calculated_address, byte_at_address) = ()
+let _BCC (calculated_addr, byte_at_addr) =
+  if not state.carry_flag then branch byte_at_addr;;
 
-let _CLD (calculated_address, byte_at_address) = ()
+let _BCS (calculated_addr, byte_at_addr) = if state.carry_flag then branch byte_at_addr;;
 
-let _CLI (calculated_address, byte_at_address) = ()
+let _BEQ (calculated_addr, byte_at_addr) = if state.zero_flag then branch byte_at_addr;;
 
-let _CLV (calculated_address, byte_at_address) = ()
+let _BIT (calculated_addr, byte_at_addr) =
+  let and_result = state.accumulator land byte_at_addr in
+  let () = state.zero_flag <- and_result = 0 in
+  let () = state.overflow_flag <- byte_at_addr land 64 > 0 in
+  state.negative_flag <- get_nth_bit 7 byte_at_addr;;
 
-let _CMP (calculated_address, byte_at_address) = ()
+let _BMI (calculated_addr, byte_at_addr) = if state.negative_flag then branch byte_at_addr;;
 
-let _CPX (calculated_address, byte_at_address) = ()
+let _BNE (calculated_addr, byte_at_addr) = if not state.zero_flag then branch byte_at_addr;;
 
-let _CPY (calculated_address, byte_at_address) = ()
+let _BPL (calculated_addr, byte_at_addr) = if not state.negative_flag then branch byte_at_addr;;
 
-let _DEC (calculated_address, byte_at_address) = ()
+let _BRK (calculated_addr, byte_at_addr) = (* Bit 4 to 1 *)
+  let pc = (state.program_counter + 1) mod 65536 in
+  stack_push (pc lsr 8);
+  stack_push (pc land 255);
+  stack_push (status_to_byte () lor 0b0011_0000);
+  state.program_counter <- Bus.read 0xFFFE + Bus.read 0xFFFF * 256;;
 
-let _DEX (calculated_address, byte_at_address) = ()
+let _BVC (calculated_addr, byte_at_addr) = if not state.overflow_flag then branch byte_at_addr;;
 
-let _DEY (calculated_address, byte_at_address) = ()
+let _BVS (calculated_addr, byte_at_addr) = if state.overflow_flag then branch byte_at_addr;;
 
-let _EOR (calculated_address, byte_at_address) = ()
+let _CLC (calculated_addr, byte_at_addr) = state.carry_flag <- false;;
 
-let _INC (calculated_address, byte_at_address) = ()
+let _CLD (calculated_addr, byte_at_addr) = state.decimal_mode_flag <- false;;
 
-let _INX (calculated_address, byte_at_address) = ()
+let _CLI (calculated_addr, byte_at_addr) = state.interrupt_disable_flag <- false;;
 
-let _INY (calculated_address, byte_at_address) = ()
+let _CLV (calculated_addr, byte_at_addr) = state.overflow_flag <- false;;
 
-let _JMP (calculated_address, byte_at_address) = ()
+let compare byte1 byte2 =
+  let result = (byte1 - byte2) land 255 in
+  state.carry_flag <- byte1 >= byte2;
+  state.zero_flag <- byte1 = byte2;
+  state.negative_flag <- result > 127;;
 
-let _JSR (calculated_address, byte_at_address) = ()
+let _CMP (calculated_addr, byte_at_addr) =
+  compare state.accumulator byte_at_addr;;
 
-let _LDA (calculated_address, byte_at_address) = ()
+let _CPX (calculated_addr, byte_at_addr) =
+  compare state.index_register_X byte_at_addr;;
 
-let _LDX (calculated_address, byte_at_address) = ()
+let _CPY (calculated_addr, byte_at_addr) =
+  compare state.index_register_Y byte_at_addr;;
 
-let _LDY (calculated_address, byte_at_address) = ()
+let _DEC (calculated_addr, byte_at_addr) =
+  let result = if byte_at_addr = 0 then 255 else byte_at_addr - 1 in
+  Bus.write calculated_addr result;
+  state.zero_flag <- result = 0;
+  state.negative_flag <- get_nth_bit 7 result;;
 
-let _LSR (calculated_address, byte_at_address) = ()
+let _DEX (calculated_addr, byte_at_addr) =
+  state.index_register_X <- if state.index_register_X = 0 then 255 else state.index_register_X - 1;
+  state.zero_flag <- state.index_register_X = 0;
+  state.negative_flag <- get_nth_bit 7 state.index_register_X;;
 
-let _NOP (calculated_address, byte_at_address) = ()
+let _DEY (calculated_addr, byte_at_addr) =
+  state.index_register_Y <- if state.index_register_Y = 0 then 255 else state.index_register_Y - 1;
+  state.zero_flag <- state.index_register_Y = 0;
+  state.negative_flag <- get_nth_bit 7 state.index_register_Y;;
 
-let _ORA (calculated_address, byte_at_address) = ()
+let _EOR (calculated_addr, byte_at_addr) =
+  state.accumulator <- state.accumulator lxor byte_at_addr;
+  state.zero_flag <- state.accumulator = 0;
+  state.negative_flag <- get_nth_bit 7 state.accumulator;;
 
-let _PHA (calculated_address, byte_at_address) = ()
+let _INC (calculated_addr, byte_at_addr) =
+  let result = (byte_at_addr + 1) mod 256 in
+  Bus.write calculated_addr result;
+  state.zero_flag <- result = 0;
+  state.negative_flag <- get_nth_bit 7 result;;
 
-let _PHP (calculated_address, byte_at_address) = ()
+let _INX (calculated_addr, byte_at_addr) =
+  state.index_register_X <- (state.index_register_X + 1) mod 256;
+  state.zero_flag <- state.index_register_X = 0;
+  state.negative_flag <- get_nth_bit 7 state.index_register_X;;
 
-let _PLA (calculated_address, byte_at_address) = ()
+let _INY (calculated_addr, byte_at_addr) =
+  state.index_register_Y <- (state.index_register_Y + 1) mod 256;
+  state.zero_flag <- state.index_register_Y = 0;
+  state.negative_flag <- get_nth_bit 7 state.index_register_Y;;
 
-let _PLP (calculated_address, byte_at_address) = ()
+let _JMP (calculated_addr, byte_at_addr) =
+  (*Printf.printf "JMP address: %02X %02X " (Bus.read 0x02FF) (Bus.read 0x0200);
+  Printf.printf "JMP calculated address: %04X\n" calculated_addr;*)
+  state.program_counter <- calculated_addr;;
 
-let _ROL (calculated_address, byte_at_address) = ()
+let _JSR (calculated_addr, byte_at_addr) =
+  let pc = if state.program_counter = 0 then 0xFFFF else state.program_counter + 2 in
+  stack_push (pc lsr 8);
+  stack_push (pc land 255);
+  state.program_counter <- calculated_addr;;
 
-let _ROR (calculated_address, byte_at_address) = ()
+let _LDA (calculated_addr, byte_at_addr) =
+  state.accumulator <- byte_at_addr;
+  state.zero_flag <- byte_at_addr = 0;
+  state.negative_flag <- get_nth_bit 7 byte_at_addr;;
 
-let _RTI (calculated_address, byte_at_address) = ()
+let _LDX (calculated_addr, byte_at_addr) =
+  state.index_register_X <- byte_at_addr;
+  state.zero_flag <- byte_at_addr = 0;
+  state.negative_flag <- get_nth_bit 7 byte_at_addr;;
 
-let _RTS (calculated_address, byte_at_address) = ()
+let _LDY (calculated_addr, byte_at_addr) =
+  state.index_register_Y <- byte_at_addr;
+  state.zero_flag <- byte_at_addr = 0;
+  state.negative_flag <- get_nth_bit 7 byte_at_addr;;
 
-let _SBC (calculated_address, byte_at_address) = ()
+let _LSR (calculated_addr, byte_at_addr) =
+  state.carry_flag <- get_nth_bit 0 byte_at_addr;
+  state.negative_flag <- false;
+  let result = byte_at_addr lsr 1 in
+  state.zero_flag <- result = 0;
+  if calculated_addr = -1 then
+    state.accumulator <- result
+  else
+    Bus.write calculated_addr result;;
 
-let _SEC (calculated_address, byte_at_address) = ()
 
-let _SED (calculated_address, byte_at_address) = ()
+let _NOP (calculated_addr, byte_at_addr) = ()
 
-let _SEI (calculated_address, byte_at_address) = ()
+let _ORA (calculated_addr, byte_at_addr) =
+  state.accumulator <- state.accumulator lor byte_at_addr;
+  state.zero_flag <- state.accumulator = 0;
+  state.negative_flag <- get_nth_bit 7 state.accumulator;;
 
-let _STA (calculated_address, byte_at_address) = ()
+let _PHA (calculated_addr, byte_at_addr) = stack_push state.accumulator;;
 
-let _STX (calculated_address, byte_at_address) = ()
+let _PHP (calculated_addr, byte_at_addr) = (* Bit 4 to 1 *)
+  stack_push @@ status_to_byte () lor 0b0011_0000;;
 
-let _STY (calculated_address, byte_at_address) = ()
+let _PLA (calculated_addr, byte_at_addr) =
+  state.accumulator <- stack_pull ();
+  set_zero_and_negative_flags state.accumulator;;
 
-let _TAX (calculated_address, byte_at_address) = ()
+let _PLP (calculated_addr, byte_at_addr) = byte_to_status @@ stack_pull ();;
 
-let _TAY (calculated_address, byte_at_address) = ()
+let _ROL (calculated_addr, byte_at_addr) =
+  let result = byte_at_addr lsl 1 land 255 lor Bool.to_int state.carry_flag in
+  state.carry_flag <- get_nth_bit 7 byte_at_addr;
+  set_zero_and_negative_flags result;
+  if calculated_addr = -1 then
+    state.accumulator <- result
+  else
+    Bus.write calculated_addr result;;
 
-let _TSX (calculated_address, byte_at_address) = ()
+let _ROR (calculated_addr, byte_at_addr) =
+  let result = byte_at_addr lsr 1 lor (Bool.to_int state.carry_flag * 128) in
+  state.carry_flag <- get_nth_bit 0 byte_at_addr;
+  set_zero_and_negative_flags result;
+  if calculated_addr = -1 then
+    state.accumulator <- result
+  else
+    Bus.write calculated_addr result;;
 
-let _TXA (calculated_address, byte_at_address) = ()
+let _RTI (calculated_addr, byte_at_addr) =
+  byte_to_status (stack_pull ());
+  let first_byte = stack_pull () in
+  state.program_counter <- first_byte + stack_pull () * 256;;
 
-let _TXS (calculated_address, byte_at_address) = ()
+let _RTS (calculated_addr, byte_at_addr) =
+  let first_byte = stack_pull () in
+  state.program_counter <- (first_byte + stack_pull () * 256) mod 65536;;
 
-let _TYA (calculated_address, byte_at_address) = ()
+let _SBC (calculated_addr, byte_at_addr) =
+  _ADC (-1, byte_at_addr lxor 255);;
 
-let run_instruction instruction calculated_address_and_byte_at_address =
+let _SEC (calculated_addr, byte_at_addr) = state.carry_flag <- true;;
+
+let _SED (calculated_addr, byte_at_addr) = state.decimal_mode_flag <- true;;
+
+let _SEI (calculated_addr, byte_at_addr) = state.interrupt_disable_flag <- true;;
+
+let _STA (calculated_addr, byte_at_addr) = Bus.write calculated_addr state.accumulator;;
+
+let _STX (calculated_addr, byte_at_addr) = Bus.write calculated_addr state.index_register_X;;
+
+let _STY (calculated_addr, byte_at_addr) = Bus.write calculated_addr state.index_register_Y;;
+
+let _TAX (calculated_addr, byte_at_addr) =
+  set_zero_and_negative_flags state.accumulator;
+  state.index_register_X <- state.accumulator;;
+
+let _TAY (calculated_addr, byte_at_addr) =
+  set_zero_and_negative_flags state.accumulator;
+  state.index_register_Y <- state.accumulator;;
+
+let _TSX (calculated_addr, byte_at_addr) =
+  set_zero_and_negative_flags state.stack_pointer;
+  state.index_register_X <- state.stack_pointer;;
+
+let _TXA (calculated_addr, byte_at_addr) =
+  set_zero_and_negative_flags state.index_register_X;
+  state.accumulator <- state.index_register_X;;
+
+let _TXS (calculated_addr, byte_at_addr) = state.stack_pointer <- state.index_register_X;;
+
+let _TYA (calculated_addr, byte_at_addr) =
+  set_zero_and_negative_flags state.index_register_Y;
+  state.accumulator <- state.index_register_Y;;
+
+let get_instruction instruction =
   match instruction with
-  ADC -> _ADC calculated_address_and_byte_at_address
-  | AND -> _AND calculated_address_and_byte_at_address
-  | ASL -> _ASL calculated_address_and_byte_at_address
-  | BCC -> _BCC calculated_address_and_byte_at_address
-  | BCS -> _BCS calculated_address_and_byte_at_address
-  | BEQ -> _BEQ calculated_address_and_byte_at_address
-  | BIT -> _BIT calculated_address_and_byte_at_address
-  | BMI -> _BMI calculated_address_and_byte_at_address
-  | BNE -> _BNE calculated_address_and_byte_at_address
-  | BPL -> _BPL calculated_address_and_byte_at_address
-  | BRK -> _BRK calculated_address_and_byte_at_address
-  | BVC -> _BVC calculated_address_and_byte_at_address
-  | BVS -> _BVS calculated_address_and_byte_at_address
-  | CLC -> _CLC calculated_address_and_byte_at_address
-  | CLD -> _CLD calculated_address_and_byte_at_address
-  | CLI -> _CLI calculated_address_and_byte_at_address
-  | CLV -> _CLV calculated_address_and_byte_at_address
-  | CMP -> _CMP calculated_address_and_byte_at_address
-  | CPX -> _CPX calculated_address_and_byte_at_address
-  | CPY -> _CPY calculated_address_and_byte_at_address
-  | DEC -> _DEC calculated_address_and_byte_at_address
-  | DEX -> _DEX calculated_address_and_byte_at_address
-  | DEY -> _DEY calculated_address_and_byte_at_address
-  | EOR -> _EOR calculated_address_and_byte_at_address
-  | INC -> _INC calculated_address_and_byte_at_address
-  | INX -> _INX calculated_address_and_byte_at_address
-  | INY -> _INY calculated_address_and_byte_at_address
-  | JMP -> _JMP calculated_address_and_byte_at_address
-  | JSR -> _JSR calculated_address_and_byte_at_address
-  | LDA -> _LDA calculated_address_and_byte_at_address
-  | LDX -> _LDX calculated_address_and_byte_at_address
-  | LDY -> _LDY calculated_address_and_byte_at_address
-  | LSR -> _LSR calculated_address_and_byte_at_address
-  | NOP -> _NOP calculated_address_and_byte_at_address
-  | ORA -> _ORA calculated_address_and_byte_at_address
-  | PHA -> _PHA calculated_address_and_byte_at_address
-  | PHP -> _PHP calculated_address_and_byte_at_address
-  | PLA -> _PLA calculated_address_and_byte_at_address
-  | PLP -> _PLP calculated_address_and_byte_at_address
-  | ROL -> _ROL calculated_address_and_byte_at_address
-  | ROR -> _ROR calculated_address_and_byte_at_address
-  | RTI -> _RTI calculated_address_and_byte_at_address
-  | RTS -> _RTS calculated_address_and_byte_at_address
-  | SBC -> _SBC calculated_address_and_byte_at_address
-  | SEC -> _SEC calculated_address_and_byte_at_address
-  | SED -> _SED calculated_address_and_byte_at_address
-  | SEI -> _SEI calculated_address_and_byte_at_address
-  | STA -> _STA calculated_address_and_byte_at_address
-  | STX -> _STX calculated_address_and_byte_at_address
-  | STY -> _STY calculated_address_and_byte_at_address
-  | TAX -> _TAX calculated_address_and_byte_at_address
-  | TAY -> _TAY calculated_address_and_byte_at_address
-  | TSX -> _TSX calculated_address_and_byte_at_address
-  | TXA -> _TXA calculated_address_and_byte_at_address
-  | TXS -> _TXS calculated_address_and_byte_at_address
-  | TYA -> _TYA calculated_address_and_byte_at_address;;
+  ADC -> _ADC
+  | AND -> _AND
+  | ASL -> _ASL
+  | BCC -> _BCC
+  | BCS -> _BCS
+  | BEQ -> _BEQ
+  | BIT -> _BIT
+  | BMI -> _BMI
+  | BNE -> _BNE
+  | BPL -> _BPL
+  | BRK -> _BRK
+  | BVC -> _BVC
+  | BVS -> _BVS
+  | CLC -> _CLC
+  | CLD -> _CLD
+  | CLI -> _CLI
+  | CLV -> _CLV
+  | CMP -> _CMP
+  | CPX -> _CPX
+  | CPY -> _CPY
+  | DEC -> _DEC
+  | DEX -> _DEX
+  | DEY -> _DEY
+  | EOR -> _EOR
+  | INC -> _INC
+  | INX -> _INX
+  | INY -> _INY
+  | JMP -> _JMP
+  | JSR -> _JSR
+  | LDA -> _LDA
+  | LDX -> _LDX
+  | LDY -> _LDY
+  | LSR -> _LSR
+  | NOP -> _NOP
+  | ORA -> _ORA
+  | PHA -> _PHA
+  | PHP -> _PHP
+  | PLA -> _PLA
+  | PLP -> _PLP
+  | ROL -> _ROL
+  | ROR -> _ROR
+  | RTI -> _RTI
+  | RTS -> _RTS
+  | SBC -> _SBC
+  | SEC -> _SEC
+  | SED -> _SED
+  | SEI -> _SEI
+  | STA -> _STA
+  | STX -> _STX
+  | STY -> _STY
+  | TAX -> _TAX
+  | TAY -> _TAY
+  | TSX -> _TSX
+  | TXA -> _TXA
+  | TXS -> _TXS
+  | TYA -> _TYA;;
 
-let determine_needed_value addressing_mode bytes_following =
-  let (byte_following_1, byte_following_2) = bytes_following in
-
-  match addressing_mode with
-  Immediate -> (-1, byte_following_1)
+let resolve_addr addr_mode following_byte_1 following_byte_2 =
+  match addr_mode with
+  Immediate -> (-1, following_byte_1)
   | Implicit -> (-1, -1)
-  | Absolute -> (byte_following_1 * 256 + byte_following_2, bus_temp.(byte_following_1 * 256 + byte_following_2))
-  | AbsoluteX -> (byte_following_1 * 256 + byte_following_2 + cpu_state.index_register_X, bus_temp.(byte_following_1 * 256 + byte_following_2 + cpu_state.index_register_X))
-  | AbsoluteY -> (byte_following_1 * 256 + byte_following_2 + cpu_state.index_register_Y, bus_temp.(byte_following_1 * 256 + byte_following_2 + cpu_state.index_register_Y))
-  | ZeroPage -> (byte_following_1, bus_temp.(byte_following_1))
-  | ZeroPageX -> ((byte_following_1 + cpu_state.index_register_X) mod 256, bus_temp.((byte_following_1 + cpu_state.index_register_X) mod 256))
-  | ZeroPageY -> ((byte_following_1 + cpu_state.index_register_Y) mod 256, bus_temp.((byte_following_1 + cpu_state.index_register_Y) mod 256))
-  | Accumulator -> (-1, -1)
-  | Relative -> (-1, byte_following_1)
-  | IndirectX -> (-1, -1) (* TODO *)
-  | IndirectY -> (bus_temp.(byte_following_1) + bus_temp.((byte_following_1 + 1) mod 256) * 256 + cpu_state.index_register_Y, bus_temp.(bus_temp.(byte_following_1) + bus_temp.((byte_following_1 + 1) mod 256) * 256 + cpu_state.index_register_Y))
-    (* TODO: Implement the bug of the 6502 with JMP with Indirect *)
-  | Indirect -> (bus_temp.(byte_following_1) + bus_temp.(byte_following_2) * 256, -1);;
+  | Absolute -> (following_byte_2 * 256 + following_byte_1, Bus.read (following_byte_2 * 256 + following_byte_1))
+  | AbsoluteX -> (following_byte_2 * 256 + following_byte_1 + state.index_register_X, Bus.read (following_byte_2 * 256 + following_byte_1 + state.index_register_X))
+  | AbsoluteY ->
+    let addr = (following_byte_2 * 256 + following_byte_1 + state.index_register_Y) mod 65536 in
+    (addr, Bus.read addr)
+  | ZeroPage -> (following_byte_1, Bus.read following_byte_1)
+  | ZeroPageX -> ((following_byte_1 + state.index_register_X) mod 256, Bus.read ((following_byte_1 + state.index_register_X) mod 256))
+  | ZeroPageY -> ((following_byte_1 + state.index_register_Y) mod 256, Bus.read ((following_byte_1 + state.index_register_Y) mod 256))
+  | Accumulator -> (-1, state.accumulator)
+  | Relative -> (-1, following_byte_1)
+  | IndirectX ->
+      let addr = (Bus.read ((following_byte_1 + state.index_register_X) mod 256) + Bus.read ((following_byte_1 + state.index_register_X + 1) mod 256) * 256) mod 65536 in
+      (addr, Bus.read addr)
+  | IndirectY ->
+      (*Printf.printf "DEBUG: %02X\n" following_byte_1;*)
+      let addr = (Bus.read following_byte_1 + Bus.read ((following_byte_1 + 1) mod 256) * 256 + state.index_register_Y) mod 65536 in
+      (addr, Bus.read addr)
+  | Indirect ->
+      if following_byte_1 = 0xFF then
+        (Bus.read (following_byte_1 + following_byte_2 * 256) + Bus.read (following_byte_2 * 256) * 256, -1)
+      else
+        (Bus.read (following_byte_1 + following_byte_2 * 256) + Bus.read (following_byte_1 + following_byte_2 * 256 + 1) * 256, -1);;
 
 let run_next_instruction () =
-  let instruction_code = bus_temp.(cpu_state.program_counter) in
-  let following_bytes = (bus_temp.(cpu_state.program_counter + 1), bus_temp.(cpu_state.program_counter + 2)) in
+  if state.nmi && not state.nmi_launched then (
+    state.nmi_launched <- true;
+
+    stack_push (state.program_counter lsr 8);
+    stack_push (state.program_counter land 255);
+    stack_push (status_to_byte ());
+
+    state.program_counter <- Bus.read 0xFFFA + Bus.read 0xFFFB * 256
+  );
+
+  let opcode = Bus.read state.program_counter in
+  let following_byte_1 = Bus.read ((state.program_counter + 1) mod 65536) in
+  let following_byte_2 = Bus.read ((state.program_counter + 2) mod 65536) in
   
-  let instruction_with_addressing_mode = Hashtbl.find instructions_table instruction_code in
+  let (instruction, addr_mode) = Cpu_instructions.decode_instruction opcode in
+  
+  let instruction_size = Cpu_instructions.get_instruction_size addr_mode in
 
-  let calculated_address_and_byte_at_address = determine_needed_value instruction_with_addressing_mode.addressing_mode following_bytes in
+  let () = (
+    if state.logging then
+      try
+        Printf.fprintf state.log "%04X  " state.program_counter;
+        (match instruction_size with
+          1 -> Printf.fprintf state.log "%02X        " opcode
+          | 2 -> Printf.fprintf state.log "%02X %02X     " opcode following_byte_1
+          | _ -> Printf.fprintf state.log "%02X %02X %02X  " opcode following_byte_1 following_byte_2);
+        Printf.fprintf state.log "%s  " @@ Cpu_instructions.instruction_to_string instruction;
+        Printf.fprintf state.log "A:%02X X:%02X Y:%02X P:%02X SP:%02X" state.accumulator state.index_register_X state.index_register_Y (status_to_byte ()) state.stack_pointer;
+        (*Printf.fprintf state.log " S:%02X-%02X-%02X-%02X-%02X" (Bus.read 0x1FF) (Bus.read 0x1FE) (Bus.read 0x1FD) (Bus.read 0x1FC) (Bus.read 0x1FB);*)
+        Printf.fprintf state.log "\n";
+        flush state.log;
+      with exc -> raise exc
+  ) in
 
-  let () = run_instruction instruction_with_addressing_mode.instruction calculated_address_and_byte_at_address in
+  let resolved_addr = resolve_addr addr_mode following_byte_1 following_byte_2 in
 
-  let program_counter_increment = Hashtbl.find addressing_mode_needed_bytes instruction_with_addressing_mode.addressing_mode in
-  cpu_state.program_counter <- cpu_state.program_counter + program_counter_increment;;
+  let instruction_function = get_instruction instruction in
+
+  let () = instruction_function resolved_addr in (* Run instruction *)
+
+  if instruction = RTI then state.nmi_launched <- false;
+
+  match instruction with
+    JMP | RTI | BRK | JSR -> ()
+    | _ -> state.program_counter <- (state.program_counter + instruction_size) mod 65536;;
