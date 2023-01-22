@@ -16,3 +16,5 @@ dune build
 dune build --watch --terminal-persistence=clear-on-rebuild # To keep VSCode consistent
 
 dune exec _build/default/bin/main.exe
+
+dune test --force
