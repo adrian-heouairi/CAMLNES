@@ -1,2 +1,3 @@
 (library
- (name CAMLNES))
+ (name CAMLNES)
+ (libraries unix))
