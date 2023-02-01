@@ -28,3 +28,19 @@ FAIT :
 - terminer le CPU
 - implémenter le bus (array) (simple)
 - ouvrir/charger un fichier NES
+
+<1/2/2023>
+Degorre
+FAIT :
+    - a enlevé tables de hachage
+    - a regardé les variants polymorphes mais ne voit pas comment ils peuvent aider
+    - regardé les GADT, mais a du mal à comprendre
+    - CPU terminé
+    - bus implémenté (par grand tableau)
+    - chargement fichier NES (s'exécute et génère un log, plusieurs tests passent, d'autres non)
+    
+À FAIRE :
+    - rectifier calendrier (trop exigeant)
+    - corriger bug ému CPU (pour passer tous les tests)
+    - implémenter partie graphique (à l'aide de SDL)
+    - continuer à envisager les aspects fonctionnels
