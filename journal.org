@@ -30,7 +30,9 @@ FAIT :
 - ouvrir/charger un fichier NES
 
 <1/2/2023>
+
 Degorre
+
 FAIT :
     - a enlevé tables de hachage
     - a regardé les variants polymorphes mais ne voit pas comment ils peuvent aider
