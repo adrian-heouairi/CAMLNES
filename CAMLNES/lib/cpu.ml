@@ -19,9 +19,6 @@ type cpu_state = {
 
   mutable nmi : bool;
   mutable nmi_launched : bool;
-
-  mutable log : out_channel;
-  mutable logging : bool;
 };;
 
 let state = {
@@ -40,19 +37,47 @@ let state = {
 
   nmi = false;
   nmi_launched = false;
-
-  log = stdout;
-  logging = false;
 };;
+
+let reset_state () =
+  state.accumulator <- 0;
+  state.index_register_X <- 0;
+  state.index_register_Y <- 0;
+  state.program_counter <- -1;
+  state.stack_pointer <- 0xFD;
+
+  state.carry_flag <- false;
+  state.zero_flag <- false;
+  state.interrupt_disable_flag <- true;
+  state.decimal_mode_flag <- false;
+  state.overflow_flag <- false;
+  state.negative_flag <- false;
+
+  state.nmi <- false;
+  state.nmi_launched <- false;;
+
+type cpu_logging = {
+  mutable logging : bool;
+  mutable log : out_channel
+}
+
+let logging = {
+  logging = false;
+  log = stdout
+}
 
 (*let log_filename = Sys.argv.(0) ^ "-cpu.log";;*)
 
 let enable_logging filename =
-  state.logging <- true;
+  logging.logging <- true;
   if filename = "" then
-    state.log <- stdout
+    logging.log <- stdout
   else
-    state.log <- open_out_bin filename;;
+    logging.log <- open_out_bin filename;;
+
+let disable_logging () =
+  logging.logging <- false;
+  logging.log <- stdout;;
 
 let status_to_byte () =
   Bool.to_int state.carry_flag * 1 +
@@ -83,6 +108,7 @@ let stack_pull () =
   state.stack_pointer <- (state.stack_pointer + 1) mod 256;
   Bus.read (0x0100 lor state.stack_pointer);;
 
+(* Returns as a boolean bit n of an integer, LSB is 0 *)
 let get_nth_bit bit number = number land (1 lsl bit) > 0;;
 
 let set_zero_and_negative_flags byte =
@@ -134,10 +160,12 @@ let _BNE (calculated_addr, byte_at_addr) = if not state.zero_flag then branch by
 let _BPL (calculated_addr, byte_at_addr) = if not state.negative_flag then branch byte_at_addr;;
 
 let _BRK (calculated_addr, byte_at_addr) = (* Bit 4 to 1 *)
-  let pc = (state.program_counter + 1) mod 65536 in
+  (* BRK must work even when the interrupt disable flag is set according to blargg's instr_test_v5 *)
+  let pc = (state.program_counter + 2) mod 65536 in
   stack_push (pc lsr 8);
   stack_push (pc land 255);
   stack_push (status_to_byte () lor 0b0011_0000);
+  state.interrupt_disable_flag <- true;
   state.program_counter <- Bus.read 0xFFFE + Bus.read 0xFFFF * 256;;
 
 let _BVC (calculated_addr, byte_at_addr) = if not state.overflow_flag then branch byte_at_addr;;
@@ -323,6 +351,50 @@ let _TYA (calculated_addr, byte_at_addr) =
   set_zero_and_negative_flags state.index_register_Y;
   state.accumulator <- state.index_register_Y;;
 
+(* TODO: Unimplemented *)
+(* Unofficial instructions *)
+let _AHX (calculated_addr, byte_at_addr) = ();;
+let _ALR (calculated_addr, byte_at_addr) =
+  _AND (calculated_addr, byte_at_addr);
+  _LSR (-1, state.accumulator);;
+let _ANC (calculated_addr, byte_at_addr) =
+  state.accumulator <- state.accumulator land byte_at_addr;
+  state.negative_flag <- get_nth_bit 7 state.accumulator;
+  state.carry_flag <- state.negative_flag;;
+let _ARR (calculated_addr, byte_at_addr) =
+  _AND (calculated_addr, byte_at_addr);
+  state.overflow_flag <- (get_nth_bit 6 state.accumulator) <> (get_nth_bit 7 state.accumulator);
+  let carry = get_nth_bit 7 state.accumulator in
+  state.accumulator <- state.accumulator lsr 1;
+  state.accumulator <- state.accumulator lor ((Bool.to_int state.carry_flag) lsl 7);
+  state.carry_flag <- carry;
+  set_zero_and_negative_flags state.accumulator;;
+let _AXS (calculated_addr, byte_at_addr) =
+  let current_accumulator = state.accumulator in
+  _TXA (-1, -1);
+  _AND (-1, current_accumulator);
+  state.carry_flag <- true;
+  _SBC (calculated_addr, byte_at_addr);
+  _TAX (-1, -1);
+  state.accumulator <- current_accumulator;;
+let _DCP (calculated_addr, byte_at_addr) = ();;
+let _ISC (calculated_addr, byte_at_addr) = ();;
+let _LAS (calculated_addr, byte_at_addr) = ();;
+let _LAX (calculated_addr, byte_at_addr) =
+  _ORA (0, 0xFF); (* 0xEE for some 6502 CPUs, but 0xFF for the NES *)
+  _AND (calculated_addr, byte_at_addr);
+  _TAX (-1, -1);;
+let _RLA (calculated_addr, byte_at_addr) = ();;
+let _RRA (calculated_addr, byte_at_addr) = ();;
+let _SAX (calculated_addr, byte_at_addr) = ();;
+let _SHX (calculated_addr, byte_at_addr) = ();;
+let _SHY (calculated_addr, byte_at_addr) = ();;
+let _SLO (calculated_addr, byte_at_addr) = ();;
+let _SRE (calculated_addr, byte_at_addr) = ();;
+let _STP (calculated_addr, byte_at_addr) = ();;
+let _TAS (calculated_addr, byte_at_addr) = ();;
+let _XAA (calculated_addr, byte_at_addr) = ();;
+
 let get_instruction instruction =
   match instruction with
   ADC -> _ADC
@@ -380,7 +452,29 @@ let get_instruction instruction =
   | TSX -> _TSX
   | TXA -> _TXA
   | TXS -> _TXS
-  | TYA -> _TYA;;
+  | TYA -> _TYA
+
+  | AHX -> _AHX
+  | ALR -> _ALR
+  | ANC -> _ANC
+  | ARR -> _ARR
+  | AXS -> _AXS
+  | DCP -> _DCP
+  | ISC -> _ISC
+  | LAS -> _LAS
+  | LAX -> _LAX
+  (*| NOP -> _NOP*)
+  | RLA -> _RLA
+  | RRA -> _RRA
+  | SAX -> _SAX
+  (*| SBC -> _SBC*)
+  | SHX -> _SHX
+  | SHY -> _SHY
+  | SLO -> _SLO
+  | SRE -> _SRE
+  | STP -> _STP
+  | TAS -> _TAS
+  | XAA -> _XAA;;
 
 let resolve_addr addr_mode following_byte_1 following_byte_2 =
   match addr_mode with
@@ -400,7 +494,6 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
       let addr = (Bus.read ((following_byte_1 + state.index_register_X) mod 256) + Bus.read ((following_byte_1 + state.index_register_X + 1) mod 256) * 256) mod 65536 in
       (addr, Bus.read addr)
   | IndirectY ->
-      (*Printf.printf "DEBUG: %02X\n" following_byte_1;*)
       let addr = (Bus.read following_byte_1 + Bus.read ((following_byte_1 + 1) mod 256) * 256 + state.index_register_Y) mod 65536 in
       (addr, Bus.read addr)
   | Indirect ->
@@ -410,13 +503,13 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
         (Bus.read (following_byte_1 + following_byte_2 * 256) + Bus.read (following_byte_1 + following_byte_2 * 256 + 1) * 256, -1);;
 
 let run_next_instruction () =
-  if state.nmi && not state.nmi_launched then (
+  if state.nmi && not state.nmi_launched then ( (* TODO: I can't figure out why the program doesn't work when I move the parenthese at the beginning of the line *)
     state.nmi_launched <- true;
 
     stack_push (state.program_counter lsr 8);
     stack_push (state.program_counter land 255);
     stack_push (status_to_byte ());
-
+    state.interrupt_disable_flag <- true;
     state.program_counter <- Bus.read 0xFFFA + Bus.read 0xFFFB * 256
   );
 
@@ -429,18 +522,18 @@ let run_next_instruction () =
   let instruction_size = Cpu_instructions.get_instruction_size addr_mode in
 
   let () = (
-    if state.logging then
+    if logging.logging then
       try
-        Printf.fprintf state.log "%04X  " state.program_counter;
+        Printf.fprintf logging.log "%04X  " state.program_counter;
         (match instruction_size with
-          1 -> Printf.fprintf state.log "%02X        " opcode
-          | 2 -> Printf.fprintf state.log "%02X %02X     " opcode following_byte_1
-          | _ -> Printf.fprintf state.log "%02X %02X %02X  " opcode following_byte_1 following_byte_2);
-        Printf.fprintf state.log "%s  " @@ Cpu_instructions.instruction_to_string instruction;
-        Printf.fprintf state.log "A:%02X X:%02X Y:%02X P:%02X SP:%02X" state.accumulator state.index_register_X state.index_register_Y (status_to_byte ()) state.stack_pointer;
-        (*Printf.fprintf state.log " S:%02X-%02X-%02X-%02X-%02X" (Bus.read 0x1FF) (Bus.read 0x1FE) (Bus.read 0x1FD) (Bus.read 0x1FC) (Bus.read 0x1FB);*)
-        Printf.fprintf state.log "\n";
-        flush state.log;
+          1 -> Printf.fprintf logging.log "%02X        " opcode
+          | 2 -> Printf.fprintf logging.log "%02X %02X     " opcode following_byte_1
+          | _ -> Printf.fprintf logging.log "%02X %02X %02X  " opcode following_byte_1 following_byte_2);
+        Printf.fprintf logging.log "%s  " @@ Cpu_instructions.instruction_to_string instruction;
+        Printf.fprintf logging.log "A:%02X X:%02X Y:%02X P:%02X SP:%02X" state.accumulator state.index_register_X state.index_register_Y (status_to_byte ()) state.stack_pointer;
+        (*Printf.fprintf logging.log " S:%02X-%02X-%02X-%02X-%02X" (Bus.read 0x1FF) (Bus.read 0x1FE) (Bus.read 0x1FD) (Bus.read 0x1FC) (Bus.read 0x1FB);*)
+        Printf.fprintf logging.log "\n";
+        flush logging.log;
       with exc -> raise exc
   ) in
 
@@ -450,7 +543,7 @@ let run_next_instruction () =
 
   let () = instruction_function resolved_addr in (* Run instruction *)
 
-  if instruction = RTI then state.nmi_launched <- false;
+  (if instruction = RTI && state.nmi_launched then state.nmi_launched <- false);
 
   match instruction with
     JMP | RTI | BRK | JSR -> ()
