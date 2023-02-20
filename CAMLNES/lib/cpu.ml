@@ -504,6 +504,7 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
 
 let run_next_instruction () =
   if state.nmi && not state.nmi_launched then ( (* TODO: I can't figure out why the program doesn't work when I move the parenthese at the beginning of the line *)
+    state.nmi <- false;
     state.nmi_launched <- true;
 
     stack_push (state.program_counter lsr 8);
