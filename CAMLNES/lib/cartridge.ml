@@ -10,8 +10,8 @@ let cartridge = {
   header = Array.make 16 0;
   number_of_PRG_banks = -1;
   number_of_CHR_banks = -1;
-  _PRG_banks = Array.make 30 [||];
-  _CHR_banks = Array.make 30 [||];
+  _PRG_banks = Array.make 32 [||]; (* 32 is arbitrary *)
+  _CHR_banks = Array.make 32 [||];
 }
 
 let parse_nes_file path =
@@ -58,3 +58,11 @@ let insert_PRG () =
     Bus.load_PRG_bank 0x8000 cartridge._PRG_banks.(0);
     Bus.load_PRG_bank 0xC000 cartridge._PRG_banks.(1);
   ) else failwith "Unsupported cartridge";;
+
+let insert_CHR () =
+  if cartridge.number_of_CHR_banks = 1 then (
+    for i = 0 to 8191 do
+      Ppu.write i cartridge._CHR_banks.(0).(i)
+    done
+  ) else
+    failwith "Unsupported cartridge";;
