@@ -46,3 +46,31 @@ FAIT :
     - corriger bug ému CPU (pour passer tous les tests)
     - implémenter partie graphique (à l'aide de SDL)
     - continuer à envisager les aspects fonctionnels
+    
+<22/2/23>
+Degorre
+
+Refactorisation impératif -> fonctionnel, exemple du bus:
+
+Type actuel de write :
+addr -> byte -> Unit
+
+Nouveau type :
+addr ->byte -> (addr -> byte) -> (addr -> byte)
+
+Impélémentation (pseudocode) :
+let write addr byte read = addr2 -> match addr2 with
+        | addr -> byte
+        | _ -> (read addr)
+        
+FAIT :
+- implém CPU complète, passe les tests purement CPU, timing (nombre de cycles) pas forcément respecté
+- puce graphique commencée :
+   - implém mémoire
+   - fonctions parsing mémoire
+   - nouveau calendrier
+
+À FAIRE :
+ - partie graphique à continuer/finir
+ - tests unitaires
+ - refactorisations PF autant que possible (comment éviter les effets de bord ?)
