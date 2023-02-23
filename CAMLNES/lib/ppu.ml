@@ -1,48 +1,64 @@
-let memory = Array.make 0x4000 0;;
-
-let read addr = memory.(addr);;
-
-let write addr byte =
-  assert (0 <= byte && byte <= 255);
-  memory.(addr) <- byte;;
-
-(* These addresses refer to CPU memory space *)
-let _PPUCTRL = 0x2000;;
-let _PPUMASK = 0x2001;;
-let _PPUSTATUS = 0x2002;;
-let _OAMADDR = 0x2003;;
-let _OAMDATA = 0x2004;;
-let _PPUSCROLL = 0x2005;;
-let _PPUADDR = 0x2006;;
-let _PPUDATA = 0x2007;;
-let _OAMDMA = 0x4014;;
+open Utils;;
+open Ppu_constants;;
 
 (* PPUCTRL *)
 let get_base_nametable_addr () =
-  match Bus.read _PPUCTRL land 0b11 with
-    | 1 -> 0x2000
-    | 2 -> 0x2400
-    | 3 -> 0x2800
-    | 4 -> 0x2C00
-    | _ -> failwith "Error in base_nametable_addr";;
+  match Bus.read pPUCTRL land 0b11 with
+    | 0 -> 0x2000
+    | 1 -> 0x2400
+    | 2 -> 0x2800
+    | 3 -> 0x2C00
+    | _ -> failwith "Error in get_base_nametable_addr";;
 
 let get_vram_addr_increment () =
-  if Bus.read _PPUCTRL land 0b100 = 0 then 1
+  if Bus.read pPUCTRL land 0b100 = 0 then 1
   else 32;;
 
 let get_sprite_pattern_table_addr () =
-  if Bus.read _PPUCTRL land 0b1000 = 0 then 0x0000
+  if Bus.read pPUCTRL land 0b1000 = 0 then 0x0000
   else 0x1000;;
 
 let get_background_pattern_table_addr () =
-  if Bus.read _PPUCTRL land 0b1_0000 = 0 then 0x0000
+  if Bus.read pPUCTRL land 0b1_0000 = 0 then 0x0000
   else 0x1000;;
 
 (* Returns false if sprite size is 8x16 *)
 let get_sprite_size_is_8x8 () =
-  Bus.read _PPUCTRL land 0b10_0000 = 0;;
+  Bus.read pPUCTRL land 0b10_0000 = 0;;
 
 let get_master_slave_select () = failwith "Not implemented";;
 
 let get_generate_NMI () =
-  Bus.read _PPUCTRL land 0b1000_0000 > 0;;
+  Bus.read pPUCTRL land 0b1000_0000 > 0;;
+
+(* PPUMASK *)
+let get_grayscale () =
+  nth_bit 0 @@ Bus.read pPUMASK;;
+
+let get_show_background_at_left () =
+  nth_bit 1 @@ Bus.read pPUMASK;;
+
+let get_show_sprites_at_left () =
+  nth_bit 2 @@ Bus.read pPUMASK;;
+
+let get_show_background () =
+  nth_bit 3 @@ Bus.read pPUMASK;;
+
+let get_show_sprites () =
+  nth_bit 4 @@ Bus.read pPUMASK;;
+
+let get_emphasize_red () =
+  nth_bit 5 @@ Bus.read pPUMASK;;
+
+let get_emphasize_green () =
+  nth_bit 6 @@ Bus.read pPUMASK;;
+
+let get_emphasize_blue () =
+  nth_bit 7 @@ Bus.read pPUMASK;;
+
+(* PPUSTATUS *)
+let set_sprite_zero_hit boolean =
+  Bus.write pPUSTATUS @@ set_nth_bit 6 (Bus.read pPUSTATUS) boolean;;
+
+let set_vblank_started boolean =
+  Bus.write pPUSTATUS @@ set_nth_bit 7 (Bus.read pPUSTATUS) boolean;;
