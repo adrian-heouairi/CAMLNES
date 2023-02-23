@@ -18,4 +18,4 @@ with exc -> print_endline ("Exception occurred during test: " ^ Printexc.to_stri
 (* TODO: Support Windows *)
 (* This will print the line number where differences start to appear *)
 Sys.command ("diff ../../../test/nestest/nestest-cpu-good.log nestest-cpu.log " ^
-  "> nestest-cpu-diff.log; [ $? = 0 ] && echo Test passed || head -2 nestest-cpu-diff.log")
+  "> nestest-cpu-diff.log && echo Test passed || head -2 nestest-cpu-diff.log")
