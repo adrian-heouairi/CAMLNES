@@ -4,8 +4,8 @@ image: ubuntu
 #  - GRADLE_USER_HOME="$(pwd)/.gradle"
 #  - export GRADLE_USER_HOME
 
-Build:
-  stage: build
+Test:
+  stage: test
   script:
     #- echo "$USER, $UID, $(groups), $SHELL, $(uname -a), $(lsb_release -a) $PWD:"; ls -A
 
@@ -13,7 +13,7 @@ Build:
     - opam init -y
     - cd CAMLNES; opam switch -y create .
     - eval $(opam env)
-    - dune build
+    - dune test
 #  cache:
 #    key: "$CI_COMMIT_REF_NAME"
 #    policy: push
@@ -21,9 +21,9 @@ Build:
 #      - build
 #      - .gradle
 
-Test:
-  stage: test
-  script: date
+#Test:
+#  stage: test
+#  script: date
 #  cache:
 #    key: "$CI_COMMIT_REF_NAME"
 #    policy: pull
