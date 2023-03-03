@@ -1,3 +1,0 @@
-(tests
- (names instr_test_v5 nestest)
- (libraries CAMLNES))

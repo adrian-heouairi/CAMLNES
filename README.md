@@ -7,6 +7,7 @@
     opam switch create .
     eval $(opam env)
     opam install dune # May not be required
+    opam install ppx_inline_test
     dune build
     dune exec _build/default/bin/main.exe <path to your .nes game>
 
