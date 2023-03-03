@@ -503,7 +503,7 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
         (Bus.read (following_byte_1 + following_byte_2 * 256) + Bus.read (following_byte_1 + following_byte_2 * 256 + 1) * 256, -1);;
 
 let run_next_instruction () =
-  if state.nmi && not state.nmi_launched then ( (* TODO: I can't figure out why the program doesn't work when I move the parenthese at the beginning of the line *)
+  (if state.nmi && not state.nmi_launched then ( (* TODO: I can't figure out why the program doesn't work when I move the parenthese at the beginning of the line *)
     state.nmi <- false;
     state.nmi_launched <- true;
 
@@ -512,7 +512,7 @@ let run_next_instruction () =
     stack_push (status_to_byte ());
     state.interrupt_disable_flag <- true;
     state.program_counter <- Bus.read 0xFFFA + Bus.read 0xFFFB * 256
-  );
+  ));
 
   let opcode = Bus.read state.program_counter in
   let following_byte_1 = Bus.read ((state.program_counter + 1) mod 65536) in
