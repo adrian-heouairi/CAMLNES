@@ -16,7 +16,7 @@ try
 with exc -> print_endline ("Exception occurred during test nestest: " ^ Printexc.to_string exc);;
 
 (* TODO: Support Windows *)
-let return_code = Sys.command "diff ../../resource/test_roms/cpu_logs/good-nestest.log cpu-nestest.log > cpu-nestest-diff.log";;
+let return_code = Sys.command "diff ../../resource/cpu_logs/good-nestest.log cpu-nestest.log > cpu-nestest-diff.log";;
 
 let%test "nestest" = return_code = 0;;
 
