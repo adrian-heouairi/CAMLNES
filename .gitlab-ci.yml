@@ -1,0 +1,32 @@
+image: ubuntu
+
+#before_script:
+#  - GRADLE_USER_HOME="$(pwd)/.gradle"
+#  - export GRADLE_USER_HOME
+
+build:
+  stage: build
+  script:
+    - echo a
+    - echo b
+#  cache:
+#    key: "$CI_COMMIT_REF_NAME"
+#    policy: push
+#    paths:
+#      - build
+#      - .gradle
+
+test:
+  stage: test
+  script: date
+#  cache:
+#    key: "$CI_COMMIT_REF_NAME"
+#    policy: pull
+#    paths:
+#      - build
+#x      - .gradle
+
+#deploy:
+#  stage: deploy
+#  script: echo "Define your deployment script!"
+#  environment: production
