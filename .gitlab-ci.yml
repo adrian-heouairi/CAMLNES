@@ -7,9 +7,10 @@ image: ubuntu
 Build:
   stage: build
   script:
-    - echo "$USER, $UID, $(groups), $SHELL, $(uname -a), $(lsb_release -a) $PWD:"; ls -A
+    #- echo "$USER, $UID, $(groups), $SHELL, $(uname -a), $(lsb_release -a) $PWD:"; ls -A
 
-    - apt update && apt install -y opam && opam init -y
+    - apt update && apt install -y opam
+    - opam init -y
     - cd CAMLNES; opam switch -y create .
     - eval $(opam env)
     - dune build
