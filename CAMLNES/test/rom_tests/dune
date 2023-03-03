@@ -1,6 +1,8 @@
 (library
  (name camlnes_rom_tests)
- (inline_tests (deps (source_tree  ../../resource)))
- (preprocess (pps ppx_inline_test))
- (libraries CAMLNES)
-)
+ (inline_tests
+  (deps
+   (source_tree ../../resource)))
+ (preprocess
+  (pps ppx_inline_test))
+ (libraries CAMLNES))

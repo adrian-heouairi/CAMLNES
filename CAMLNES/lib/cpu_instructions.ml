@@ -1,10 +1,21 @@
-type addr_mode = Immediate | Implicit | Absolute | AbsoluteX | AbsoluteY
-  | ZeroPage | ZeroPageX | ZeroPageY | Accumulator
-  | Relative | IndirectX | IndirectY | Indirect;;
+type addr_mode =
+  | Immediate
+  | Implicit
+  | Absolute
+  | AbsoluteX
+  | AbsoluteY
+  | ZeroPage
+  | ZeroPageX
+  | ZeroPageY
+  | Accumulator
+  | Relative
+  | IndirectX
+  | IndirectY
+  | Indirect
 
 let get_instruction_size addr_mode =
   match addr_mode with
-  Immediate -> 2
+  | Immediate -> 2
   | Implicit -> 1
   | Absolute -> 3
   | AbsoluteX -> 3
@@ -16,68 +27,168 @@ let get_instruction_size addr_mode =
   | Relative -> 2
   | IndirectX -> 2
   | IndirectY -> 2
-  | Indirect -> 3;;
+  | Indirect -> 3
 
-type instruction = ADC | AND | ASL | BCC | BCS | BEQ | BIT | BMI | BNE | BPL | BRK
-| BVC | BVS | CLC | CLD | CLI | CLV | CMP | CPX | CPY | DEC | DEX
-| DEY | EOR | INC | INX | INY | JMP | JSR | LDA | LDX | LDY | LSR
-| NOP | ORA | PHA | PHP | PLA | PLP | ROL | ROR | RTI | RTS | SBC
-| SEC | SED | SEI | STA | STX | STY | TAX | TAY | TSX | TXA | TXS | TYA
-
-(* Unofficial instructions *)
-| AHX
-| ALR
-| ANC
-| ARR
-| AXS
-| DCP
-| ISC
-| LAS
-| LAX
-(*| NOP*)
-| RLA
-| RRA
-| SAX
-(*| SBC*)
-| SHX
-| SHY
-| SLO
-| SRE
-| STP
-| TAS
-| XAA
-;;
+type instruction =
+  | ADC
+  | AND
+  | ASL
+  | BCC
+  | BCS
+  | BEQ
+  | BIT
+  | BMI
+  | BNE
+  | BPL
+  | BRK
+  | BVC
+  | BVS
+  | CLC
+  | CLD
+  | CLI
+  | CLV
+  | CMP
+  | CPX
+  | CPY
+  | DEC
+  | DEX
+  | DEY
+  | EOR
+  | INC
+  | INX
+  | INY
+  | JMP
+  | JSR
+  | LDA
+  | LDX
+  | LDY
+  | LSR
+  | NOP
+  | ORA
+  | PHA
+  | PHP
+  | PLA
+  | PLP
+  | ROL
+  | ROR
+  | RTI
+  | RTS
+  | SBC
+  | SEC
+  | SED
+  | SEI
+  | STA
+  | STX
+  | STY
+  | TAX
+  | TAY
+  | TSX
+  | TXA
+  | TXS
+  | TYA
+  (* Unofficial instructions *)
+  | AHX
+  | ALR
+  | ANC
+  | ARR
+  | AXS
+  | DCP
+  | ISC
+  | LAS
+  | LAX
+  (*| NOP*)
+  | RLA
+  | RRA
+  | SAX
+  (*| SBC*)
+  | SHX
+  | SHY
+  | SLO
+  | SRE
+  | STP
+  | TAS
+  | XAA
 
 let instruction_to_string instruction =
   match instruction with
-  ADC -> "ADC" | AND -> "AND" | ASL -> "ASL" | BCC -> "BCC" | BCS -> "BCS" | BEQ -> "BEQ" | BIT -> "BIT" | BMI -> "BMI" | BNE -> "BNE" | BPL -> "BPL" | BRK -> "BRK"
-| BVC -> "BVC" | BVS -> "BVS" | CLC -> "CLC" | CLD -> "CLD" | CLI -> "CLI" | CLV -> "CLV" | CMP -> "CMP" | CPX -> "CPX" | CPY -> "CPY" | DEC -> "DEC" | DEX -> "DEX"
-| DEY -> "DEY" | EOR -> "EOR" | INC -> "INC" | INX -> "INX" | INY -> "INY" | JMP -> "JMP" | JSR -> "JSR" | LDA -> "LDA" | LDX -> "LDX" | LDY -> "LDY" | LSR -> "LSR"
-| NOP -> "NOP" | ORA -> "ORA" | PHA -> "PHA" | PHP -> "PHP" | PLA -> "PLA" | PLP -> "PLP" | ROL -> "ROL" | ROR -> "ROR" | RTI -> "RTI" | RTS -> "RTS" | SBC -> "SBC"
-| SEC -> "SEC" | SED -> "SED" | SEI -> "SEI" | STA -> "STA" | STX -> "STX" | STY -> "STY" | TAX -> "TAX" | TAY -> "TAY" | TSX -> "TSX" | TXA -> "TXA" | TXS -> "TXS" | TYA -> "TYA"
-
-(* Unofficial instructions, names are from https://www.nesdev.org/wiki/CPU_unofficial_opcodes *)
-| AHX -> "AHX"
-| ALR -> "ALR"
-| ANC -> "ANC"
-| ARR -> "ARR"
-| AXS -> "AXS"
-| DCP -> "DCP"
-| ISC -> "ISC"
-| LAS -> "LAS"
-| LAX -> "LAX"
-(*| NOP -> "NOP"*)
-| RLA -> "RLA"
-| RRA -> "RRA"
-| SAX -> "SAX"
-(*| SBC -> "SBC"*)
-| SHX -> "SHX"
-| SHY -> "SHY"
-| SLO -> "SLO"
-| SRE -> "SRE"
-| STP -> "STP"
-| TAS -> "TAS"
-| XAA -> "XAA";;
+  | ADC -> "ADC"
+  | AND -> "AND"
+  | ASL -> "ASL"
+  | BCC -> "BCC"
+  | BCS -> "BCS"
+  | BEQ -> "BEQ"
+  | BIT -> "BIT"
+  | BMI -> "BMI"
+  | BNE -> "BNE"
+  | BPL -> "BPL"
+  | BRK -> "BRK"
+  | BVC -> "BVC"
+  | BVS -> "BVS"
+  | CLC -> "CLC"
+  | CLD -> "CLD"
+  | CLI -> "CLI"
+  | CLV -> "CLV"
+  | CMP -> "CMP"
+  | CPX -> "CPX"
+  | CPY -> "CPY"
+  | DEC -> "DEC"
+  | DEX -> "DEX"
+  | DEY -> "DEY"
+  | EOR -> "EOR"
+  | INC -> "INC"
+  | INX -> "INX"
+  | INY -> "INY"
+  | JMP -> "JMP"
+  | JSR -> "JSR"
+  | LDA -> "LDA"
+  | LDX -> "LDX"
+  | LDY -> "LDY"
+  | LSR -> "LSR"
+  | NOP -> "NOP"
+  | ORA -> "ORA"
+  | PHA -> "PHA"
+  | PHP -> "PHP"
+  | PLA -> "PLA"
+  | PLP -> "PLP"
+  | ROL -> "ROL"
+  | ROR -> "ROR"
+  | RTI -> "RTI"
+  | RTS -> "RTS"
+  | SBC -> "SBC"
+  | SEC -> "SEC"
+  | SED -> "SED"
+  | SEI -> "SEI"
+  | STA -> "STA"
+  | STX -> "STX"
+  | STY -> "STY"
+  | TAX -> "TAX"
+  | TAY -> "TAY"
+  | TSX -> "TSX"
+  | TXA -> "TXA"
+  | TXS -> "TXS"
+  | TYA -> "TYA"
+  (* Unofficial instructions, names are from https://www.nesdev.org/wiki/CPU_unofficial_opcodes *)
+  | AHX -> "AHX"
+  | ALR -> "ALR"
+  | ANC -> "ANC"
+  | ARR -> "ARR"
+  | AXS -> "AXS"
+  | DCP -> "DCP"
+  | ISC -> "ISC"
+  | LAS -> "LAS"
+  | LAX -> "LAX"
+  (*| NOP -> "NOP"*)
+  | RLA -> "RLA"
+  | RRA -> "RRA"
+  | SAX -> "SAX"
+  (*| SBC -> "SBC"*)
+  | SHX -> "SHX"
+  | SHY -> "SHY"
+  | SLO -> "SLO"
+  | SRE -> "SRE"
+  | STP -> "STP"
+  | TAS -> "TAS"
+  | XAA -> "XAA"
 
 let decode_instruction instruction =
   match instruction with
@@ -233,7 +344,6 @@ let decode_instruction instruction =
   | 0x8A -> (TXA, Implicit)
   | 0x9A -> (TXS, Implicit)
   | 0x98 -> (TYA, Implicit)
-
   (* 105 unofficial instructions *)
   (* TODO: Some instructions marked Implicit might actually be Accumulator? *)
   | 0x02 -> (STP, Implicit)
@@ -341,5 +451,4 @@ let decode_instruction instruction =
   | 0xFB -> (ISC, AbsoluteY)
   | 0xFC -> (NOP, AbsoluteX)
   | 0xFF -> (ISC, AbsoluteX)
-
-  | x -> failwith @@ Printf.sprintf "Bad instruction 0x%02X" x;;
+  | x -> failwith @@ Printf.sprintf "Bad instruction 0x%02X" x

@@ -19,7 +19,7 @@
  (name CAMLNES)
  (synopsis "An NES emulator")
  ;(description "A longer description")
- (depends ocaml dune ppx_inline_test)
+ (depends ocaml dune ppx_inline_test ocamlformat)
  ;(tags
   ;(topics "to describe" your project))
 )

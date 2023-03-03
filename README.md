@@ -13,3 +13,4 @@
     # (If starting a new project, run "dune init project CAMLNES" on the CAMLNES folder)
     # To keep VSCode consistent: dune build --watch --terminal-persistence=clear-on-rebuild
     # To run tests: dune test -f
+    # To format the code with ocamlformat: dune fmt
