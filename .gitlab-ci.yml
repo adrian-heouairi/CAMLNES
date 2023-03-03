@@ -4,11 +4,12 @@ image: ubuntu
 #  - GRADLE_USER_HOME="$(pwd)/.gradle"
 #  - export GRADLE_USER_HOME
 
-build:
+Build:
   stage: build
   script:
-    - echo a
-    - echo b
+    - echo "$SHELL"
+    - a=$(date); echo "$a"
+    - apt install -y iputils-ping
 #  cache:
 #    key: "$CI_COMMIT_REF_NAME"
 #    policy: push
@@ -16,7 +17,7 @@ build:
 #      - build
 #      - .gradle
 
-test:
+Test:
   stage: test
   script: date
 #  cache:
