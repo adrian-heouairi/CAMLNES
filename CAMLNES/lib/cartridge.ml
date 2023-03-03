@@ -50,13 +50,18 @@ let parse_nes_file path =
 
   with exc -> raise exc;;
 
+let load_PRG_bank addr _PRG_bank = (* Bank is necessarily of size 16384 *)
+  for i = addr to addr + 16383 do
+    Bus.write i _PRG_bank.(i - addr)
+  done;;
+
 let insert_PRG () =
   if cartridge.number_of_PRG_banks = 1 then (
-    Bus.load_PRG_bank 0x8000 cartridge._PRG_banks.(0);
-    Bus.load_PRG_bank 0xC000 cartridge._PRG_banks.(0);
+    load_PRG_bank 0x8000 cartridge._PRG_banks.(0);
+    load_PRG_bank 0xC000 cartridge._PRG_banks.(0);
   ) else if cartridge.number_of_PRG_banks = 2 then (
-    Bus.load_PRG_bank 0x8000 cartridge._PRG_banks.(0);
-    Bus.load_PRG_bank 0xC000 cartridge._PRG_banks.(1);
+    load_PRG_bank 0x8000 cartridge._PRG_banks.(0);
+    load_PRG_bank 0xC000 cartridge._PRG_banks.(1);
   ) else failwith "Unsupported cartridge";;
 
 let insert_CHR () =

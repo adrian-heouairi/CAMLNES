@@ -24,8 +24,3 @@ let write addr byte =
     if addr = _OAMDMA then oamdma byte
   );
 ;;
-
-let load_PRG_bank addr _PRG_bank = (* Bank is necessarily of size 16384 *)
-  for i = addr to addr + 16383 do
-    write i _PRG_bank.(i - addr)
-  done;;
