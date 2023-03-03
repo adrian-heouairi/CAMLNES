@@ -9,7 +9,7 @@ Build:
   script:
     - echo "$SHELL"
     - a=$(date); echo "$a"
-    - apt install -y iputils-ping
+    - apt update && apt install -y iputils-ping
 #  cache:
 #    key: "$CI_COMMIT_REF_NAME"
 #    policy: push
