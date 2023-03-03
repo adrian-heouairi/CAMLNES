@@ -7,9 +7,12 @@ image: ubuntu
 Build:
   stage: build
   script:
-    - echo "$SHELL"
-    - a=$(date); echo "$a"
-    - apt update && apt install -y iputils-ping
+    - echo "$USER, $UID, $(groups), $SHELL, $(uname -a), $(lsb_release -a) $PWD:"; ls -A
+
+    - apt update && apt install -y opam && opam init -y
+    - cd CAMLNES; opam switch -y create .
+    - eval $(opam env)
+    - dune build
 #  cache:
 #    key: "$CI_COMMIT_REF_NAME"
 #    policy: push
