@@ -14,3 +14,5 @@
     # To keep VSCode consistent: dune build --watch --terminal-persistence=clear-on-rebuild
     # To run tests: dune test -f
     # To format the code with ocamlformat: dune fmt
+    # To generate the documentation for CAMLNES/lib: dune build @doc (goes to CAMLNES/_build/default/_doc/_html/index.html)
+    # To generate the documentation for CAMLNES/test: dune build @doc-private (goes to CAMLNES/_build/default/_doc/_html/*@*)

@@ -1,3 +1,5 @@
 (library
  (name CAMLNES)
- (libraries unix))
+ ;(libraries unix)
+ (public_name CAMLNES)
+ )
