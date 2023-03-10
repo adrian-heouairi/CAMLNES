@@ -7,11 +7,11 @@ let read addr =
     );*)
   bus.(addr)
 
-let oamdma msb =
+let do_OAMDMA msb =
   let bus_start_addr = msb lsl 8 in
   let offset = read _OAMADDR in
   for i = 0 to 255 do
-    Ppumem.oam_write ((i + offset) mod 256) (read (bus_start_addr + i))
+    Ppumem._OAM_write ((i + offset) mod 256) (read (bus_start_addr + i))
   done
 
 let write addr byte =
@@ -21,4 +21,4 @@ let write addr byte =
   if
     (*if addr = _OAMDATA then failwith "OAMDATA is not supported"*)
     addr = _OAMDMA
-  then oamdma byte
+  then do_OAMDMA byte
