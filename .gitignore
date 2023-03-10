@@ -1,6 +1,7 @@
-_build/*
-CAMLNES/_build/*
-CAMLNES/_opam/*
-.vscode/*
+.vscode
+
+/_build
+/CAMLNES/_build
+/CAMLNES/_opam
 
 /CAMLNES/resource/cpu_logs/local
