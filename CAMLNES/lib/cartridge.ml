@@ -59,7 +59,7 @@ let parse_nes_file path =
 let load_PRG_bank addr _PRG_bank =
   (* Bank is necessarily of size 16384 *)
   for i = addr to addr + 16383 do
-    Bus.write i _PRG_bank.(i - addr)
+    Bus.write_raw i _PRG_bank.(i - addr)
   done
 
 let insert_PRG () =
