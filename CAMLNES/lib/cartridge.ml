@@ -74,6 +74,6 @@ let insert_PRG () =
 let insert_CHR () =
   if cartridge.number_of_CHR_banks = 1 then
     for i = 0 to 8191 do
-      Ppumem.write i cartridge._CHR_banks.(0).(i)
+      Ppumem.write_raw i cartridge._CHR_banks.(0).(i)
     done
   else failwith "Unsupported cartridge"

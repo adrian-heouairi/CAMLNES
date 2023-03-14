@@ -1,5 +1,14 @@
 let memory = Array.make 0x4000 0
 
+let read_raw addr =
+  assert (0 <= addr && addr < 0x4000);
+  memory.(addr)
+
+let write_raw addr byte =
+  assert (0 <= addr && addr < 0x4000);
+  assert (0 <= byte && byte <= 255);
+  memory.(addr) <- byte
+
 (* TODO Implement mirroring for reads and writes to addresses >= 0x4000 *)
 let read addr =
   assert (0 <= addr && addr < 0x4000);
