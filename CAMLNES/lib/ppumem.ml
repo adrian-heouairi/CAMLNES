@@ -1,4 +1,6 @@
 let memory = Array.make 0x4000 0
+
+(* TODO Implement mirroring for reads and writes to addresses >= 0x4000 *)
 let read addr = memory.(addr)
 
 let write addr byte =
