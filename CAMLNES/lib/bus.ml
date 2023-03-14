@@ -16,21 +16,26 @@ let write_raw addr byte =
 let get_vram_addr_increment () =
   if read_raw _PPUCTRL land 0b100 = 0 then 1 else 32
 
+let resolve_mirror addr =
+  let ret = ref addr in
+  if 0x0800 <= addr && addr <= 0x1FFF then ret := addr mod 0x800;
+  if 0x2008 <= addr && addr <= 0x3FFF then ret := (addr mod 8) + 0x2000;
+  !ret
+
 let read addr =
   assert (0 <= addr && addr <= 65535);
   let ret = ref (-1) in
-  let real_addr = ref addr in
-  if 0x2000 <= addr && addr <= 0x3FFF then real_addr := (addr mod 8) + 0x2000;
+  let real_addr = resolve_mirror addr in
 
   (* TODO Implement OAMDATA reads *)
-  if !real_addr = _PPUSTATUS then (
+  if real_addr = _PPUSTATUS then (
     vram_addr := -1;
     scroll_pos := -1);
-  if !real_addr = _PPUDATA then (
+  if real_addr = _PPUDATA then (
     ret := Ppumem.read !vram_addr;
     vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
 
-  if !ret <> -1 then !ret else bus.(!real_addr)
+  if !ret <> -1 then !ret else bus.(real_addr)
 
 let do_OAMDMA msb =
   let bus_start_addr = msb lsl 8 in
@@ -43,19 +48,18 @@ let write addr byte =
   assert (0 <= addr && addr <= 65535);
   assert (0 <= byte && byte <= 255);
 
-  let real_addr = ref addr in
-  if 0x2000 <= addr && addr <= 0x3FFF then real_addr := (addr mod 8) + 0x2000;
+  let real_addr = resolve_mirror addr in
 
   (* TODO Implement OAMDATA writes *)
-  if !real_addr = _PPUSCROLL then
-    if !scroll_pos = -1 then scroll_pos := byte lsl 8
-    else scroll_pos := !scroll_pos + byte;
-  if !real_addr = _PPUADDR then
-    if !vram_addr = -1 then vram_addr := byte lsl 8
-    else vram_addr := !vram_addr + byte;
-  if !real_addr = _PPUDATA then (
+  if real_addr = _PPUSCROLL then
+    (if !scroll_pos = -1 then scroll_pos := byte lsl 8
+    else scroll_pos := !scroll_pos + byte);
+  if real_addr = _PPUADDR then
+    (if !vram_addr = -1 then vram_addr := byte lsl 8
+    else vram_addr := !vram_addr + byte);
+  if real_addr = _PPUDATA then (
     Ppumem.write !vram_addr byte;
     vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
-  if !real_addr = _OAMDMA then do_OAMDMA byte;
+  if real_addr = _OAMDMA then do_OAMDMA byte;
 
-  bus.(!real_addr) <- byte
+  bus.(real_addr) <- byte
