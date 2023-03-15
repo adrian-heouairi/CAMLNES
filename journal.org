@@ -74,3 +74,21 @@ FAIT :
  - partie graphique à continuer/finir
  - tests unitaires
  - refactorisations PF autant que possible (comment éviter les effets de bord ?)
+ 
+<15/03/23>
+
+Degorre
+
+Fait :
+
+- progrès sur la partie graphique (adresses spéciales comm. CPU <->PPU )
+- tests (d'intégration), insérés dans pipeline CI/CD
+- instructions pour le développeur dans le readme
+
+À faire :
+
+- tests unitaires
+- refactorisation selon princites PF
+- lecture documentation PPU
+
+
