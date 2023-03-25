@@ -32,7 +32,7 @@ let read addr =
     vram_addr := -1;
     scroll_pos := -1);
   if real_addr = _PPUDATA then (
-    ret := Ppumem.read !vram_addr;
+    ret := Ppumem.read (!vram_addr mod 0x4000);
     vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
 
   if !ret <> -1 then !ret else bus.(real_addr)
@@ -58,7 +58,7 @@ let write addr byte =
     (if !vram_addr = -1 then vram_addr := byte lsl 8
     else vram_addr := !vram_addr + byte);
   if real_addr = _PPUDATA then (
-    Ppumem.write !vram_addr byte;
+    Ppumem.write (!vram_addr mod 0x4000) byte;
     vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
   if real_addr = _OAMDMA then do_OAMDMA byte;
 
