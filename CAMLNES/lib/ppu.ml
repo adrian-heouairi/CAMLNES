@@ -10,8 +10,8 @@ let get_base_nametable_addr () =
   | 3 -> 0x2C00
   | _ -> failwith "Error in get_base_nametable_addr"
 
-let get_vram_addr_increment () =
-  if Bus.read_raw _PPUCTRL land 0b100 = 0 then 1 else 32
+(*let get_vram_addr_increment () =
+  if Bus.read_raw _PPUCTRL land 0b100 = 0 then 1 else 32*)
 
 let get_sprite_pattern_table_addr () =
   if Bus.read_raw _PPUCTRL land 0b1000 = 0 then 0x0000 else 0x1000
