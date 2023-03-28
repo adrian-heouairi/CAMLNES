@@ -4,6 +4,7 @@ type cartridge = {
   mutable number_of_CHR_banks : int;
   _PRG_banks : int array array;
   _CHR_banks : int array array;
+  mutable vertical_mirroring : bool
 }
 
 let cartridge =
@@ -14,6 +15,7 @@ let cartridge =
     _PRG_banks = Array.make 32 [||];
     (* 32 is arbitrary *)
     _CHR_banks = Array.make 32 [||];
+    vertical_mirroring = false
   }
 
 let parse_nes_file path =
@@ -32,6 +34,8 @@ let parse_nes_file path =
 
     cartridge.number_of_PRG_banks <- cartridge.header.(4);
     cartridge.number_of_CHR_banks <- cartridge.header.(5);
+
+    cartridge.vertical_mirroring <- Utils.nth_bit 0 cartridge.header.(6);
 
     if cartridge.header.(6) land 0b0000_0100 > 0 then
       (* Skip the trainer if there is one *)
