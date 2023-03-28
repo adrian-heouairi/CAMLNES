@@ -47,7 +47,8 @@ let _OAM = Array.make 256 0
 (* Sprite memory *)
 let _OAM_read addr =
   assert (0 <= addr && addr <= 255);
-  _OAM.(addr)
+  if addr mod 4 = 2 then _OAM.(addr) land 0xE3
+  else _OAM.(addr)
 
 let _OAM_write addr byte =
   assert (0 <= addr && addr <= 255);
