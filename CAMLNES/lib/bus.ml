@@ -30,7 +30,10 @@ let read addr =
   (* TODO Implement OAMDATA reads *)
   if real_addr = _PPUSTATUS then (
     vram_addr := -1;
-    scroll_pos := -1);
+    scroll_pos := -1;
+    ret := bus.(real_addr);
+    write_raw real_addr (Utils.set_nth_bit 7 !ret false)
+  );
   if real_addr = _PPUDATA then (
     ret := Ppumem.read !vram_addr;
     vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
