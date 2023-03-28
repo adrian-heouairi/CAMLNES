@@ -20,8 +20,7 @@ let run_test name logging =
   Bus.write 0x6000 0x80;
 
   (try
-     for i = 1 to 10000000 do
-       let _ = i in
+     for _ = 1 to 10000000 do
        Cpu.run_next_instruction ();
        if Bus.read 0x6000 <> 0x80 then raise Break_loop
      done
