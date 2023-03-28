@@ -59,25 +59,3 @@ let parse_nes_file path =
       cartridge._CHR_banks.(i) <- bank
     done
   with exc -> raise exc
-
-let load_PRG_bank addr _PRG_bank =
-  (* Bank is necessarily of size 16384 *)
-  for i = addr to addr + 16383 do
-    Bus.write_raw i _PRG_bank.(i - addr)
-  done
-
-let insert_PRG () =
-  if cartridge.number_of_PRG_banks = 1 then (
-    load_PRG_bank 0x8000 cartridge._PRG_banks.(0);
-    load_PRG_bank 0xC000 cartridge._PRG_banks.(0))
-  else if cartridge.number_of_PRG_banks = 2 then (
-    load_PRG_bank 0x8000 cartridge._PRG_banks.(0);
-    load_PRG_bank 0xC000 cartridge._PRG_banks.(1))
-  else failwith "Unsupported cartridge"
-
-let insert_CHR () =
-  if cartridge.number_of_CHR_banks = 1 then
-    for i = 0 to 8191 do
-      Ppumem.write_raw i cartridge._CHR_banks.(0).(i)
-    done
-  else failwith "Unsupported cartridge"
