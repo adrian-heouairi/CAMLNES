@@ -1,10 +1,29 @@
 open Ppu_constants
 
 let bus = Array.make 65536 0
-let vram_addr = ref (-1)
-let scroll_pos = ref (-1)
 
-let _PPUDATA_read_buffer = ref 0
+type _PPU_state = {
+  mutable vram_addr : int;
+  mutable scroll_x : int;
+  mutable scroll_y : int;
+  mutable write_toggle_w : bool;
+  mutable _PPUDATA_read_buffer : int
+}
+
+let _PPU_state = {
+  vram_addr = 0;
+  scroll_x = 0;
+  scroll_y = 0;
+  write_toggle_w = false;
+  _PPUDATA_read_buffer = 0
+}
+
+let reset_PPU_state () =
+  _PPU_state.vram_addr <- 0;
+  _PPU_state.scroll_x <- 0;
+  _PPU_state.scroll_y <- 0;
+  _PPU_state.write_toggle_w <- false;
+  _PPU_state._PPUDATA_read_buffer <- 0
 
 let read_raw addr =
   assert (0 <= addr && addr <= 65535);
@@ -14,6 +33,16 @@ let write_raw addr byte =
   assert (0 <= addr && addr <= 65535);
   assert (0 <= byte && byte <= 255);
   bus.(addr) <- byte
+
+let set_nth_bit_raw addr bit boolean =
+  assert (0 <= addr && addr <= 65535);
+  assert (0 <= bit && bit <= 7);
+  bus.(addr) <- Utils.set_nth_bit bit bus.(addr) boolean
+
+let get_nth_bit_raw addr bit =
+  assert (0 <= addr && addr <= 65535);
+  assert (0 <= bit && bit <= 7);
+  Utils.nth_bit bit bus.(addr)
 
 let get_vram_addr_increment () =
   if read_raw _PPUCTRL land 0b100 = 0 then 1 else 32
@@ -31,15 +60,14 @@ let read addr =
 
   (* TODO Implement OAMDATA reads *)
   if real_addr = _PPUSTATUS then (
-    vram_addr := -1;
-    scroll_pos := -1;
+    _PPU_state.write_toggle_w <- false;
     ret := bus.(real_addr);
     write_raw real_addr (Utils.set_nth_bit 7 !ret false)
   );
   if real_addr = _PPUDATA then (
-    ret := !_PPUDATA_read_buffer;
-    _PPUDATA_read_buffer := Ppumem.read !vram_addr;
-    vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
+    ret := _PPU_state._PPUDATA_read_buffer;
+    _PPU_state._PPUDATA_read_buffer <- Ppumem.read _PPU_state.vram_addr;
+    _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000);
 
   if !ret <> -1 then !ret else bus.(real_addr)
 
@@ -58,14 +86,16 @@ let write addr byte =
 
   (* TODO Implement OAMDATA writes *)
   if real_addr = _PPUSCROLL then
-    (if !scroll_pos = -1 then scroll_pos := byte lsl 8
-    else scroll_pos := !scroll_pos + byte);
+    (if not _PPU_state.write_toggle_w then _PPU_state.scroll_x <- byte
+    else _PPU_state.scroll_y <- byte;
+    _PPU_state.write_toggle_w <- not _PPU_state.write_toggle_w);
   if real_addr = _PPUADDR then
-    (if !vram_addr = -1 then vram_addr := byte lsl 8 mod 0x4000
-    else vram_addr := (!vram_addr + byte) mod 0x4000);
+    (if not _PPU_state.write_toggle_w then _PPU_state.vram_addr <- byte lsl 8 mod 0x4000
+    else _PPU_state.vram_addr <- (_PPU_state.vram_addr + byte) mod 0x4000;
+    _PPU_state.write_toggle_w <- not _PPU_state.write_toggle_w);
   if real_addr = _PPUDATA then (
-    Ppumem.write !vram_addr byte;
-    vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
+    Ppumem.write _PPU_state.vram_addr byte;
+  _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000);
   if real_addr = _OAMDMA then do_OAMDMA byte;
 
   bus.(real_addr) <- byte

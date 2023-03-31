@@ -26,6 +26,7 @@ let init game_path =
   done;
   (* Also disables NMI *)
   Cpu.reset_state ();
+  Bus.reset_PPU_state ();
   Cartridge.parse_nes_file game_path;
   insert_PRG ();
   Cpu.state.program_counter <- Bus.read 0xFFFC + (Bus.read 0xFFFD * 256);
