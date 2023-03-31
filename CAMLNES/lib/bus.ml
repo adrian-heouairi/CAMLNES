@@ -4,6 +4,8 @@ let bus = Array.make 65536 0
 let vram_addr = ref (-1)
 let scroll_pos = ref (-1)
 
+let _PPUDATA_read_buffer = ref 0
+
 let read_raw addr =
   assert (0 <= addr && addr <= 65535);
   bus.(addr)
@@ -35,7 +37,8 @@ let read addr =
     write_raw real_addr (Utils.set_nth_bit 7 !ret false)
   );
   if real_addr = _PPUDATA then (
-    ret := Ppumem.read !vram_addr;
+    ret := !_PPUDATA_read_buffer;
+    _PPUDATA_read_buffer := Ppumem.read !vram_addr;
     vram_addr := (!vram_addr + get_vram_addr_increment ()) mod 0x4000);
 
   if !ret <> -1 then !ret else bus.(real_addr)
