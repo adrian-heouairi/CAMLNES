@@ -2,14 +2,17 @@ open CAMLNES;;
 
 (*open Tsdl;;*)
 
-Init.init Sys.argv.(1)
+Cpu.enable_logging "cpu-main.log";;
+Init.init Sys.argv.(1);
 
-(* Here loop that executes CPU and PPU: *)
-
-(*début_de_frame = Unix.timestamp
-  set cpu.nmi if nmis are activated
-  exécuter le cpu pour approximativement une frame (en général il se bloquera dans une boucle)
-  render image
-  sleep autant qu'il faut jusqu'à la fin de la durée d'une frame selon $début_de_frame
-  recommencer
-  obtenir plusieurs longueurs comme durée d'un cycle, d'une frame etc*)
+while true do
+  (* VBLank start *)
+  for _ = 1 to 700 do Cpu.run_next_instruction () done;
+  (* VBLank end *)
+  for i = 1 to 61440 do (* There are 256 * 240 = 61440 pixels *)
+    Ppu.draw_next_pixel ();
+    if i mod 8 = 0 then Cpu.run_next_instruction ()
+  done;
+  Unix.sleepf (30.0 /. 60.0);
+  Printf.printf "%d %d\n%!" Ppu.draw.screen.(0).(0) Ppu.draw.screen.(0).(1);
+done

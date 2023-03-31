@@ -1,4 +1,4 @@
 (executable
  (public_name CAMLNES)
  (name main)
- (libraries CAMLNES))
+ (libraries CAMLNES unix))
