@@ -88,7 +88,15 @@ Fait :
 À faire :
 
 - tests unitaires
-- refactorisation selon princites PF
+- refactorisation selon principes PF
 - lecture documentation PPU
 
-
+05/04/2023
+FAIT :
+- en train d'implémenter la puce graphique
+ + il ne faut pas émuler tout le comportement interne de la puce grahique,
+   seulement son comportement extérieur
+À FAIRE
+- faire le rendu graphique dans le terminal (peut-être plus simple pour 
+  comparer les résultat sur des cartouches de test)
+- gestion de la superposition des sprites, dans le bon ordre, pour calculer la valeur de chaque pixel
