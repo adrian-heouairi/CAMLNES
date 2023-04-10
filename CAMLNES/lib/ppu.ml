@@ -40,3 +40,29 @@ let set_sprite_zero_hit boolean =
 
 let set_vblank_started boolean =
   Bus.write_raw _PPUSTATUS @@ set_nth_bit 7 (Bus.read_raw _PPUSTATUS) boolean
+
+type draw = {
+  mutable x : int;
+  mutable y : int;
+  screen : int array array
+}
+
+let draw = {
+  x = 0;
+  y = 0;
+  screen = Array.make 240 (Array.make 256 0)
+}
+
+let draw_background_pixel () = draw.screen.(draw.y).(draw.x) <- 1
+
+let draw_foreground_pixel () = ()
+
+let draw_next_pixel () =
+  if draw.x = 0 && draw.y = 0 then set_vblank_started false;
+  draw_background_pixel ();
+  if draw.x = 255 && draw.y = 239 then (
+    set_vblank_started true;
+    if get_generate_NMI () then Cpu.state.nmi <- true
+  );
+  draw.x <- (draw.x + 1) mod 256;
+  if draw.x = 0 then draw.y <- (draw.y + 1) mod 240
