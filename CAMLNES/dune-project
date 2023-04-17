@@ -9,7 +9,7 @@
 
 ;(authors "Author Name")
 
-;(maintainers "Maintainer Name")
+(maintainers "Maintainer Name")
 
 ;(license LICENSE)
 
@@ -19,7 +19,7 @@
  (name CAMLNES)
  (synopsis "An NES emulator")
  ;(description "A longer description")
- (depends ocaml dune ppx_inline_test ocamlformat odoc)
+ (depends ocaml dune ppx_inline_test ocamlformat odoc tsdl)
  ;(tags
   ;(topics "to describe" your project))
 )
