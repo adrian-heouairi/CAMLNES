@@ -52,8 +52,8 @@ type draw = {
 let draw = {
   x = 0;
   y = 0;
-  screen = Array.make 240 (Array.make 256 0);
-  fg = Array.make 240 (Array.make 256 (-1));
+  screen = Array.make_matrix 240 256 0;
+  fg = Array.make_matrix 240 256 (-1);
   bigarray = Bigarray.Array1.create Bigarray.int8_unsigned Bigarray.c_layout (256 * 240 * 3)
 }
 
@@ -69,18 +69,18 @@ let colors = [| 0x747474; 0x24188c; 0x0000a8; 0x44009c; 0x8c0074; 0xa80010;
 
 let get_CHR_tile table_addr number =
   let start = table_addr + number * 16 in
-  let tile = Array.make 8 (Array.make 8 0) in
+  let tile = Array.make_matrix 8 8 0 in
   for i = 0 to 7 do
     for j = 0 to 7 do
       let bit1 = nth_bit (7 - j) (Ppumem.read_raw (start + i)) in
       let bit2 = nth_bit (7 - j) (Ppumem.read_raw (start + 8 + i)) in
       let res =
-        if not bit1 && not bit2 then 0
+        if (not bit1) && not bit2 then 0
         else if bit1 && not bit2 then 1
-        else if not bit1 && bit2 then 2
+        else if (not bit1) && bit2 then 2
         else 3
       in tile.(i).(j) <- res
-    done
+    done;
   done;
 
   tile
@@ -88,7 +88,7 @@ let get_CHR_tile table_addr number =
 let get_CHR_tile_colors sprite_palette palette_number table_addr number =
   let palette_start = if sprite_palette then 0x3F10 else 0x3F00 in
   let tile = get_CHR_tile table_addr number in
-  let tile_colors = Array.make 8 (Array.make 8 0x1D) in
+  let tile_colors = Array.make_matrix 8 8 0x1D in
   for i = 0 to 7 do
     for j = 0 to 7 do
       if tile.(i).(j) = 0 && sprite_palette then tile_colors.(i).(j) <- -1

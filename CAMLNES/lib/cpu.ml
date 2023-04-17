@@ -539,7 +539,7 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
           -1 )
 
 let run_next_instruction () =
-  if state.nmi && not state.nmi_launched then ( print_endline "CPU entered NMI";
+  if state.nmi && not state.nmi_launched then ( (*print_endline "CPU entered NMI";*)
     state.nmi <- false;
     state.nmi_launched <- true;
 
