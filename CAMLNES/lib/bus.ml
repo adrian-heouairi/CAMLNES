@@ -65,9 +65,11 @@ let read addr =
     write_raw real_addr (Utils.set_nth_bit 7 !ret false)
   );
   if real_addr = _PPUDATA then (
-    ret := _PPU_state._PPUDATA_read_buffer;
+    if _PPU_state.vram_addr <= 0x3EFF then ret := _PPU_state._PPUDATA_read_buffer
+    else ret := Ppumem.read _PPU_state.vram_addr;
     _PPU_state._PPUDATA_read_buffer <- Ppumem.read _PPU_state.vram_addr;
-    _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000);
+    _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000
+  );
 
   if !ret <> -1 then !ret else bus.(real_addr)
 
