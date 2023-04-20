@@ -107,7 +107,7 @@ let render_sprites () =
     done
   done;
 
-  for i = 0 to 63 do
+  for i = 63 downto 0 do
     let y_pos =
       if Ppumem._OAM_read i = 255 then 255 else (Ppumem._OAM_read i) + 1 in
     let tile_number = Ppumem._OAM_read (i + 1) in
