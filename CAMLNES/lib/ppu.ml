@@ -183,9 +183,12 @@ let screen_to_bigarray () =
 let draw_next_pixel () =
   if draw.x = 0 && draw.y = 0 then (
     set_vblank_started false;
+    set_sprite_zero_hit false;
 
     render_sprites ()
   );
+
+  if draw.fg.(draw.y).(draw.x) <= -64 then set_sprite_zero_hit true;
 
   if draw.fg.(draw.y).(draw.x) <> transparent_pixel then
     draw.screen.(draw.y).(draw.x) <- (abs draw.fg.(draw.y).(draw.x)) mod 64
