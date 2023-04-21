@@ -72,8 +72,8 @@ let get_CHR_tile table_addr number =
   let tile = Array.make_matrix 8 8 0 in
   for i = 0 to 7 do
     for j = 0 to 7 do
-      let bit1 = nth_bit (7 - j) (Ppumem.read_raw (start + i)) in
-      let bit2 = nth_bit (7 - j) (Ppumem.read_raw (start + 8 + i)) in
+      let bit1 = nth_bit (7 - j) (Ppumem.read (start + i)) in
+      let bit2 = nth_bit (7 - j) (Ppumem.read (start + 8 + i)) in
       let res =
         if (not bit1) && not bit2 then 0
         else if bit1 && not bit2 then 1
@@ -92,9 +92,9 @@ let get_CHR_tile_colors sprite_palette palette_number table_addr number =
   for i = 0 to 7 do
     for j = 0 to 7 do
       if tile.(i).(j) = 0 && sprite_palette then tile_colors.(i).(j) <- -1
-      else if tile.(i).(j) = 0 then tile_colors.(i).(j) <- Ppumem.read_raw 0x3F00
+      else if tile.(i).(j) = 0 then tile_colors.(i).(j) <- Ppumem.read 0x3F00
       else tile_colors.(i).(j) <-
-        Ppumem.read_raw (palette_start + palette_number * 4 + tile.(i).(j))
+        Ppumem.read (palette_start + palette_number * 4 + tile.(i).(j))
     done
   done;
 

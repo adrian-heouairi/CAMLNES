@@ -89,13 +89,13 @@ let byte_to_status byte =
   state.negative_flag <- byte land 128 > 0
 
 let stack_push byte =
-  Bus.write (0x0100 lor state.stack_pointer) byte;
+  Bus.write_raw (0x0100 lor state.stack_pointer) byte;
   state.stack_pointer <- state.stack_pointer - 1;
   if state.stack_pointer = -1 then state.stack_pointer <- 255
 
 let stack_pull () =
   state.stack_pointer <- (state.stack_pointer + 1) mod 256;
-  Bus.read (0x0100 lor state.stack_pointer)
+  Bus.read_raw (0x0100 lor state.stack_pointer)
 
 (* Returns as a boolean bit n of an integer, LSB is 0 *)
 let get_nth_bit bit number = number land (1 lsl bit) > 0
@@ -170,7 +170,7 @@ let _BRK (calculated_addr, byte_at_addr) =
   stack_push (pc land 255);
   stack_push (status_to_byte () lor 0b0011_0000);
   state.interrupt_disable_flag <- true;
-  state.program_counter <- Bus.read 0xFFFE + (Bus.read 0xFFFF * 256)
+  state.program_counter <- Bus.read_raw 0xFFFE + (Bus.read_raw 0xFFFF * 256)
 
 let _BVC (calculated_addr, byte_at_addr) =
   if not state.overflow_flag then branch byte_at_addr
@@ -491,10 +491,10 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
   | Implicit -> (-1, -1)
   | Absolute ->
       ( (following_byte_2 * 256) + following_byte_1,
-        Bus.read ((following_byte_2 * 256) + following_byte_1) )
+        Bus.read_raw ((following_byte_2 * 256) + following_byte_1) )
   | AbsoluteX ->
       ( (following_byte_2 * 256) + following_byte_1 + state.index_register_X,
-        Bus.read
+        Bus.read_raw
           ((following_byte_2 * 256) + following_byte_1 + state.index_register_X)
       )
   | AbsoluteY ->
@@ -502,40 +502,40 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
         ((following_byte_2 * 256) + following_byte_1 + state.index_register_Y)
         mod 65536
       in
-      (addr, Bus.read addr)
-  | ZeroPage -> (following_byte_1, Bus.read following_byte_1)
+      (addr, Bus.read_raw addr)
+  | ZeroPage -> (following_byte_1, Bus.read_raw following_byte_1)
   | ZeroPageX ->
       ( (following_byte_1 + state.index_register_X) mod 256,
-        Bus.read ((following_byte_1 + state.index_register_X) mod 256) )
+        Bus.read_raw ((following_byte_1 + state.index_register_X) mod 256) )
   | ZeroPageY ->
       ( (following_byte_1 + state.index_register_Y) mod 256,
-        Bus.read ((following_byte_1 + state.index_register_Y) mod 256) )
+        Bus.read_raw ((following_byte_1 + state.index_register_Y) mod 256) )
   | Accumulator -> (-1, state.accumulator)
   | Relative -> (-1, following_byte_1)
   | IndirectX ->
       let addr =
-        (Bus.read ((following_byte_1 + state.index_register_X) mod 256)
-        + Bus.read ((following_byte_1 + state.index_register_X + 1) mod 256)
+        (Bus.read_raw ((following_byte_1 + state.index_register_X) mod 256)
+        + Bus.read_raw ((following_byte_1 + state.index_register_X + 1) mod 256)
           * 256)
         mod 65536
       in
-      (addr, Bus.read addr)
+      (addr, Bus.read_raw addr)
   | IndirectY ->
       let addr =
-        (Bus.read following_byte_1
-        + (Bus.read ((following_byte_1 + 1) mod 256) * 256)
+        (Bus.read_raw following_byte_1
+        + (Bus.read_raw ((following_byte_1 + 1) mod 256) * 256)
         + state.index_register_Y)
         mod 65536
       in
-      (addr, Bus.read addr)
+      (addr, Bus.read_raw addr)
   | Indirect ->
       if following_byte_1 = 0xFF then
-        ( Bus.read (following_byte_1 + (following_byte_2 * 256))
-          + (Bus.read (following_byte_2 * 256) * 256),
+        ( Bus.read_raw (following_byte_1 + (following_byte_2 * 256))
+          + (Bus.read_raw (following_byte_2 * 256) * 256),
           -1 )
       else
-        ( Bus.read (following_byte_1 + (following_byte_2 * 256))
-          + (Bus.read (following_byte_1 + (following_byte_2 * 256) + 1) * 256),
+        ( Bus.read_raw (following_byte_1 + (following_byte_2 * 256))
+          + (Bus.read_raw (following_byte_1 + (following_byte_2 * 256) + 1) * 256),
           -1 )
 
 let run_next_instruction () =
@@ -547,11 +547,11 @@ let run_next_instruction () =
     stack_push (state.program_counter land 255);
     stack_push (status_to_byte ());
     state.interrupt_disable_flag <- true;
-    state.program_counter <- Bus.read 0xFFFA + (Bus.read 0xFFFB * 256));
+    state.program_counter <- Bus.read_raw 0xFFFA + (Bus.read_raw 0xFFFB * 256));
 
-  let opcode = Bus.read state.program_counter in
-  let following_byte_1 = Bus.read ((state.program_counter + 1) mod 65536) in
-  let following_byte_2 = Bus.read ((state.program_counter + 2) mod 65536) in
+  let opcode = Bus.read_raw state.program_counter in
+  let following_byte_1 = Bus.read_raw ((state.program_counter + 1) mod 65536) in
+  let following_byte_2 = Bus.read_raw ((state.program_counter + 2) mod 65536) in
 
   let instruction, addr_mode = Cpu_instructions.decode_instruction opcode in
 
@@ -573,7 +573,7 @@ let run_next_instruction () =
     Buffer.add_string buffer (Printf.sprintf "A:%02X X:%02X Y:%02X P:%02X SP:%02X"
       state.accumulator state.index_register_X state.index_register_Y
       (status_to_byte ()) state.stack_pointer);
-    (*Printf.fprintf logging.log " S:%02X-%02X-%02X-%02X-%02X" (Bus.read 0x1FF) (Bus.read 0x1FE) (Bus.read 0x1FD) (Bus.read 0x1FC) (Bus.read 0x1FB);*)
+    (*Printf.fprintf logging.log " S:%02X-%02X-%02X-%02X-%02X" (Bus.read_raw 0x1FF) (Bus.read_raw 0x1FE) (Bus.read_raw 0x1FD) (Bus.read_raw 0x1FC) (Bus.read_raw 0x1FB);*)
 
     logging.cur_instr <- Buffer.contents buffer;
     try

@@ -25,33 +25,33 @@ let reset_PPU_state () =
   _PPU_state.write_toggle_w <- false;
   _PPU_state._PPUDATA_read_buffer <- 0
 
-let read_raw addr =
-  assert (0 <= addr && addr <= 65535);
-  bus.(addr)
-
-let write_raw addr byte =
-  assert (0 <= addr && addr <= 65535);
-  assert (0 <= byte && byte <= 255);
-  bus.(addr) <- byte
-
-let set_nth_bit_raw addr bit boolean =
-  assert (0 <= addr && addr <= 65535);
-  assert (0 <= bit && bit <= 7);
-  bus.(addr) <- Utils.set_nth_bit bit bus.(addr) boolean
-
-let get_nth_bit_raw addr bit =
-  assert (0 <= addr && addr <= 65535);
-  assert (0 <= bit && bit <= 7);
-  Utils.nth_bit bit bus.(addr)
-
-let get_vram_addr_increment () =
-  if read_raw _PPUCTRL land 0b100 = 0 then 1 else 32
-
 let resolve_mirror addr =
   let ret = ref addr in
   if 0x0800 <= addr && addr <= 0x1FFF then ret := addr mod 0x800;
   if 0x2008 <= addr && addr <= 0x3FFF then ret := (addr mod 8) + 0x2000;
   !ret
+
+let read_raw addr =
+  assert (0 <= addr && addr <= 65535);
+  bus.(resolve_mirror addr)
+
+let write_raw addr byte =
+  assert (0 <= addr && addr <= 65535);
+  assert (0 <= byte && byte <= 255);
+  bus.(resolve_mirror addr) <- byte
+
+let set_nth_bit_raw addr bit boolean =
+  assert (0 <= addr && addr <= 65535);
+  assert (0 <= bit && bit <= 7);
+  bus.(resolve_mirror addr) <- Utils.set_nth_bit bit bus.(resolve_mirror addr) boolean
+
+let get_nth_bit_raw addr bit =
+  assert (0 <= addr && addr <= 65535);
+  assert (0 <= bit && bit <= 7);
+  Utils.nth_bit bit bus.(resolve_mirror addr)
+
+let get_vram_addr_increment () =
+  if read_raw _PPUCTRL land 0b100 = 0 then 1 else 32
 
 let read addr =
   assert (0 <= addr && addr <= 65535);

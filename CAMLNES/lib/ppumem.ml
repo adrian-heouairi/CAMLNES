@@ -1,13 +1,13 @@
 let memory = Array.make 0x4000 0
 
-let read_raw addr =
+(*let read_raw addr =
   assert (0 <= addr && addr < 0x4000);
   memory.(addr)
 
 let write_raw addr byte =
   assert (0 <= addr && addr < 0x4000);
   assert (0 <= byte && byte <= 255);
-  memory.(addr) <- byte
+  memory.(addr) <- byte*)
 
 let resolve_mirror addr =
   let ret = ref addr in

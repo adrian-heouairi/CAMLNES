@@ -16,7 +16,7 @@ let insert_PRG () =
 let insert_CHR () =
   if Cartridge.cartridge.number_of_CHR_banks = 1 then
     for i = 0 to 8191 do
-      Ppumem.write_raw i Cartridge.cartridge._CHR_banks.(0).(i)
+      Ppumem.write i Cartridge.cartridge._CHR_banks.(0).(i)
     done
   else failwith "Unsupported cartridge"
 
@@ -29,7 +29,7 @@ let init game_path =
   Bus.reset_PPU_state ();
   Cartridge.parse_nes_file game_path;
   insert_PRG ();
-  Cpu.state.program_counter <- Bus.read 0xFFFC + (Bus.read 0xFFFD * 256);
+  Cpu.state.program_counter <- Bus.read_raw 0xFFFC + (Bus.read_raw 0xFFFD * 256);
 
   (* Prepare PPU here *)
   insert_CHR ()

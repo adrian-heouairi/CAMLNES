@@ -22,7 +22,7 @@ let key_scancode ev = Sdl.Scancode.enum Sdl.Event.(get ev keyboard_scancode);;
 let quit = ref false;;
 let pause = ref false;;
 
-Cpu.enable_logging "/tmp/cpu-main.log";;
+(*Cpu.enable_logging "/tmp/cpu-main.log";;*)
 Init.init Sys.argv.(1);
 
 Printf.printf "\n%!";;
@@ -44,7 +44,7 @@ while not !quit do
     Sdl.render_present renderer;
   );
 
-  Unix.sleepf (1.0 /. 60.0);
+  Unix.sleepf (0.25 /. 60.0);
 
   while Sdl.poll_event (Some event) do
     match Sdl.Event.(enum (get event typ)) with
