@@ -41,6 +41,8 @@ let set_sprite_zero_hit boolean =
 let set_vblank_started boolean =
   Bus.write_raw _PPUSTATUS @@ set_nth_bit 7 (Bus.read_raw _PPUSTATUS) boolean
 
+let transparent_pixel = 1000
+
 type draw = {
   mutable x : int;
   mutable y : int;
@@ -53,7 +55,7 @@ let draw = {
   x = 0;
   y = 0;
   screen = Array.make_matrix 240 256 0;
-  fg = Array.make_matrix 240 256 (-1);
+  fg = Array.make_matrix 240 256 transparent_pixel;
   bigarray = Bigarray.Array1.create Bigarray.int8_unsigned Bigarray.c_layout (256 * 240 * 3)
 }
 
@@ -111,8 +113,6 @@ let get_CHR_tile table_addr number flip_horz flip_vert =
   );
 
   !ref_tile
-
-let transparent_pixel = 1000
 
 (* Returns a 8x8 array containing constant transparent_pixel or a color between 0 and 63 *)
 let get_CHR_tile_colors sprite_palette palette_number table_addr number flip_horz flip_vert =
