@@ -223,9 +223,16 @@ let draw_next_pixel () =
 
   if draw.fg.(draw.y).(draw.x) <= -64 then set_sprite_zero_hit true;
 
-  if draw.fg.(draw.y).(draw.x) <> transparent_pixel then
+  (*if draw.fg.(draw.y).(draw.x) <> transparent_pixel then
     draw.screen.(draw.y).(draw.x) <- (abs draw.fg.(draw.y).(draw.x)) mod 64
-  else draw.screen.(draw.y).(draw.x) <- 0x1D; (* 0x1D is black *)
+  else draw.screen.(draw.y).(draw.x) <- 0x1D; (* 0x1D is black *)*)
+
+  if draw.fg.(draw.y).(draw.x) = transparent_pixel && draw.bg.(draw.y).(draw.x) = transparent_pixel then
+    draw.screen.(draw.y).(draw.x) <- Ppumem.read 0x3F00
+  else if draw.fg.(draw.y).(draw.x) <> transparent_pixel then
+    draw.screen.(draw.y).(draw.x) <- (abs draw.fg.(draw.y).(draw.x)) mod 64
+  else
+    draw.screen.(draw.y).(draw.x) <- draw.bg.(draw.y).(draw.x);
 
   if draw.x = 255 && draw.y = 239 then (
     screen_to_bigarray ();
