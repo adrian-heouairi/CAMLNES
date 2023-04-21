@@ -54,9 +54,9 @@ let reset_state () =
   state.nmi <- false;
   state.nmi_launched <- false
 
-type cpu_logging = { mutable logging : bool; mutable log : out_channel }
+type cpu_logging = { mutable logging : bool; mutable log : out_channel; mutable cur_instr : string }
 
-let logging = { logging = false; log = stdout }
+let logging = { logging = false; log = stdout; cur_instr = "" }
 
 (*let log_filename = Sys.argv.(0) ^ "-cpu.log";;*)
 
@@ -557,27 +557,30 @@ let run_next_instruction () =
 
   let instruction_size = Cpu_instructions.get_instruction_size addr_mode in
 
-  let () =
-    if logging.logging then
-      try
-        Printf.fprintf logging.log "%04X  " state.program_counter;
-        (match instruction_size with
-        | 1 -> Printf.fprintf logging.log "%02X        " opcode
-        | 2 ->
-            Printf.fprintf logging.log "%02X %02X     " opcode following_byte_1
-        | _ ->
-            Printf.fprintf logging.log "%02X %02X %02X  " opcode
-              following_byte_1 following_byte_2);
-        Printf.fprintf logging.log "%s  "
-        @@ Cpu_instructions.instruction_to_string instruction;
-        Printf.fprintf logging.log "A:%02X X:%02X Y:%02X P:%02X SP:%02X"
-          state.accumulator state.index_register_X state.index_register_Y
-          (status_to_byte ()) state.stack_pointer;
-        (*Printf.fprintf logging.log " S:%02X-%02X-%02X-%02X-%02X" (Bus.read 0x1FF) (Bus.read 0x1FE) (Bus.read 0x1FD) (Bus.read 0x1FC) (Bus.read 0x1FB);*)
-        Printf.fprintf logging.log "\n";
-        flush logging.log
-      with exc -> raise exc
-  in
+
+  if logging.logging then (
+    let buffer = Buffer.create 50 in
+    Buffer.add_string buffer (Printf.sprintf "%04X  " state.program_counter);
+    (match instruction_size with
+    | 1 -> Buffer.add_string buffer (Printf.sprintf "%02X        " opcode)
+    | 2 ->
+      Buffer.add_string buffer (Printf.sprintf "%02X %02X     " opcode following_byte_1)
+    | _ ->
+      Buffer.add_string buffer (Printf.sprintf "%02X %02X %02X  " opcode
+          following_byte_1 following_byte_2));
+    Buffer.add_string buffer (Printf.sprintf "%s  "
+    @@ Cpu_instructions.instruction_to_string instruction);
+    Buffer.add_string buffer (Printf.sprintf "A:%02X X:%02X Y:%02X P:%02X SP:%02X"
+      state.accumulator state.index_register_X state.index_register_Y
+      (status_to_byte ()) state.stack_pointer);
+    (*Printf.fprintf logging.log " S:%02X-%02X-%02X-%02X-%02X" (Bus.read 0x1FF) (Bus.read 0x1FE) (Bus.read 0x1FD) (Bus.read 0x1FC) (Bus.read 0x1FB);*)
+
+    logging.cur_instr <- Buffer.contents buffer;
+    try
+      Printf.fprintf logging.log "%s\n" logging.cur_instr;
+    with exc -> ()
+  );
+
 
   let resolved_addr =
     resolve_addr addr_mode following_byte_1 following_byte_2
