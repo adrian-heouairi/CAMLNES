@@ -67,7 +67,7 @@ let colors = [| 0x747474; 0x24188c; 0x0000a8; 0x44009c; 0x8c0074; 0xa80010;
 0xfcbcb0; 0xfcd8a8; 0xfce4a0; 0xe0fca0; 0xa8f0bc; 0xb0fccc; 0x9cfcf0; 0xc4c4c4;
 0x000000; 0x000000; |]
 
-let get_CHR_tile table_addr number =
+let get_CHR_tile table_addr number flip_horz flip_vert =
   let start = table_addr + number * 16 in
   let tile = Array.make_matrix 8 8 0 in
   for i = 0 to 7 do
@@ -83,11 +83,37 @@ let get_CHR_tile table_addr number =
     done;
   done;
 
-  tile
+  let ref_tile = ref tile in
 
-let get_CHR_tile_colors sprite_palette palette_number table_addr number =
+  (if flip_horz then
+    let hflip = Array.make_matrix 8 8 0 in
+
+    for j = 0 to 7 do
+      for i = 0 to 7 do
+        hflip.(i).(7 - j) <- !ref_tile.(i).(j)
+      done
+    done;
+
+    ref_tile := hflip;
+  );
+
+  (if flip_vert then
+    let vflip = Array.make_matrix 8 8 0 in
+
+    for i = 0 to 7 do
+      for j = 0 to 7 do
+        vflip.(7 - i).(j) <- !ref_tile.(i).(j)
+      done
+    done;
+
+    ref_tile := vflip;
+  );
+
+  !ref_tile
+
+let get_CHR_tile_colors sprite_palette palette_number table_addr number flip_horz flip_vert =
   let palette_start = if sprite_palette then 0x3F10 else 0x3F00 in
-  let tile = get_CHR_tile table_addr number in
+  let tile = get_CHR_tile table_addr number flip_horz flip_vert in
   let tile_colors = Array.make_matrix 8 8 0x1D in
   for i = 0 to 7 do
     for j = 0 to 7 do
@@ -112,10 +138,12 @@ let render_sprites () =
       if Ppumem._OAM_read (i * 4) = 255 then 255 else (Ppumem._OAM_read (i * 4)) + 1 in
     let tile_number = Ppumem._OAM_read (i * 4 + 1) in
     let palette_number = Ppumem._OAM_read (i * 4 + 2) land 0b11 in
+    let flip_horz = nth_bit 6 (Ppumem._OAM_read (i * 4 + 2)) in
+    let flip_vert = nth_bit 7 (Ppumem._OAM_read (i * 4 + 2)) in
     let x_pos = Ppumem._OAM_read (i * 4 + 3) in
 
     let tile_colors = get_CHR_tile_colors
-      true palette_number (get_sprite_pattern_table_addr ()) tile_number in
+      true palette_number (get_sprite_pattern_table_addr ()) tile_number flip_horz flip_vert in
 
     for m = 0 to 7 do
       for n = 0 to 7 do
