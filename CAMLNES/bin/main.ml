@@ -22,7 +22,7 @@ let key_scancode ev = Sdl.Scancode.enum Sdl.Event.(get ev keyboard_scancode);;
 let quit = ref false;;
 let pause = ref false;;
 
-(*Cpu.enable_logging "cpu-main.log";;*)
+Cpu.enable_logging "/tmp/cpu-main.log";;
 Init.init Sys.argv.(1);
 
 Printf.printf "\n%!";;
@@ -60,15 +60,33 @@ while not !quit do
         done;
         Printf.printf "\n%!"
         | `Key_down when key_scancode event = `S ->
-          (*let tile = Ppu.get_CHR_tile (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) in*)
-          let tile = Ppu.get_CHR_tile 0 0xA2 in
+          let tile = Ppu.get_CHR_tile (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) in
+          (*let tile = Ppu.get_CHR_tile 0 0xA2 in*)
           for i = 0 to 7 do
             for j = 0 to 7 do
-              (*if tile.(i).(j) = 0 then print_char '0'*)
-              print_int tile.(i).(j)
+              if tile.(i).(j) = 0 then print_char '.'
+              else print_int tile.(i).(j)
             done;
             print_newline ()
           done
+
+        | `Key_down when key_scancode event = `C ->
+          let tile_colors = Ppu.get_CHR_tile_colors true (Ppumem._OAM_read 2 land 0b11) (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) in
+          for i = 0 to 7 do
+            for j = 0 to 7 do
+              if tile_colors.(i).(j) = -1 then print_string ".. "
+              else Printf.printf "%02X " tile_colors.(i).(j)
+            done;
+            print_newline ()
+          done
+
+        | `Key_down when key_scancode event = `V ->
+          for i = 0 to 7 do
+            let start = 0x3F00 + 4 * i in
+            Printf.printf "0x%02X 0x%02X 0x%02X 0x%02X\n%!" (Ppumem.read start)
+            (Ppumem.read (start + 1)) (Ppumem.read (start + 2)) (Ppumem.read (start + 3))
+          done
+
       (*| `Key_down when key_scancode e = `Apostrophe -> Debugger.break_on_step := true
       | `Key_up when key_scancode e = `S -> save_screenshot nes.ppu.frame_content
       | `Key_up -> update_input ~down:false (key_scancode e)
