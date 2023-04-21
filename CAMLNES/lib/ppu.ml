@@ -109,10 +109,10 @@ let render_sprites () =
 
   for i = 63 downto 0 do
     let y_pos =
-      if Ppumem._OAM_read i = 255 then 255 else (Ppumem._OAM_read i) + 1 in
-    let tile_number = Ppumem._OAM_read (i + 1) in
-    let palette_number = Ppumem._OAM_read (i + 2) land 0b11 in
-    let x_pos = Ppumem._OAM_read (i + 3) in
+      if Ppumem._OAM_read (i * 4) = 255 then 255 else (Ppumem._OAM_read (i * 4)) + 1 in
+    let tile_number = Ppumem._OAM_read (i * 4 + 1) in
+    let palette_number = Ppumem._OAM_read (i * 4 + 2) land 0b11 in
+    let x_pos = Ppumem._OAM_read (i * 4 + 3) in
 
     let tile_colors = get_CHR_tile_colors
       true palette_number (get_sprite_pattern_table_addr ()) tile_number in
