@@ -48,6 +48,7 @@ type draw = {
   mutable y : int;
   screen : int array array;
   fg : int array array;
+  bg : int array array;
   bigarray : (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t;
 }
 
@@ -56,6 +57,7 @@ let draw = {
   y = 0;
   screen = Array.make_matrix 240 256 0;
   fg = Array.make_matrix 240 256 transparent_pixel;
+  bg = Array.make_matrix 480 512 transparent_pixel;
   bigarray = Bigarray.Array1.create Bigarray.int8_unsigned Bigarray.c_layout (256 * 240 * 3)
 }
 
@@ -170,6 +172,36 @@ let render_sprites () =
 
   done
 
+let render_background () =
+  for i = 0 to 29 do
+    for j = 0 to 31 do
+      let tile_number = Ppumem.read (0x2000 + i * 32 + j) in
+      let attr_table_x = j / 4 in
+      let attr_table_y = i / 4 in
+      let attr_table_byte = Ppumem.read (0x23C0 + 8 * attr_table_y + attr_table_x) in
+      let right = j mod 4 >= 2 in
+      let bottom = i mod 4 >= 2 in
+      let palette = ref 0 in
+      (if not right && not bottom then palette := attr_table_byte land 0b11
+      else if right && not bottom then palette := attr_table_byte land 0b1100 lsr 2
+      else if not right && bottom then palette := attr_table_byte land 0b11_0000 lsr 4
+      else palette := attr_table_byte land 0b1100_0000 lsr 6;);
+
+      let tile_colors = get_CHR_tile_colors
+        false !palette (get_background_pattern_table_addr ()) tile_number false false in
+      
+        for m = 0 to 7 do
+          for n = 0 to 7 do
+            (*try*)
+              (*if tile_colors.(m).(n) <> transparent_pixel then ( *)
+                draw.bg.(i * 8 + m).(j * 8 + n) <- tile_colors.(m).(n)
+              (* ) *)
+            (*with _ -> ()*)
+          done
+        done
+    done
+  done
+
 let screen_to_bigarray () =
   for y = 0 to 239 do
     for x = 0 to 255 do
@@ -185,7 +217,8 @@ let draw_next_pixel () =
     set_vblank_started false;
     set_sprite_zero_hit false;
 
-    render_sprites ()
+    render_sprites ();
+    render_background ()
   );
 
   if draw.fg.(draw.y).(draw.x) <= -64 then set_sprite_zero_hit true;
