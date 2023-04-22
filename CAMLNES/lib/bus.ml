@@ -109,6 +109,6 @@ let write addr byte =
   _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000);
   if real_addr = _OAMDMA then do_OAMDMA byte;
 
-  if real_addr = 0x4016 && byte = 0 then controller1_read_counter := 0;
+  if real_addr = 0x4016 && byte land 1 = 0 then controller1_read_counter := 0;
 
   bus.(real_addr) <- byte
