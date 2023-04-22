@@ -22,6 +22,17 @@ let key_scancode ev = Sdl.Scancode.enum Sdl.Event.(get ev keyboard_scancode);;
 let quit = ref false;;
 let pause = ref false;;
 
+let update_input keycode ~down = match keycode with
+  | `K -> Bus.controller1.(0) <- down
+  | `L -> Bus.controller1.(1) <- down
+  | `Backspace -> Bus.controller1.(2) <- down
+  | `Return -> Bus.controller1.(3) <- down
+  | `W -> Bus.controller1.(4) <- down
+  | `S -> Bus.controller1.(5) <- down
+  | `A -> Bus.controller1.(6) <- down
+  | `D -> Bus.controller1.(7) <- down
+  | _ -> ();;
+
 (*Cpu.enable_logging "/tmp/cpu-main.log";;*)
 Init.init Sys.argv.(1);
 
@@ -52,7 +63,10 @@ while not !quit do
       | `Key_down when key_scancode event = `Escape -> quit := true
       | `Key_down when key_scancode event = `P -> pause := not !pause
       | `Key_down when key_scancode event = `R -> Init.init Sys.argv.(1)
-      
+    
+
+
+
       | `Key_down when key_scancode event = `O ->
         for i = 0 to 63 do
           Printf.printf "Sprite %d: %d 0x%02X 0x%02X %d %!" i
@@ -60,59 +74,61 @@ while not !quit do
             (Ppumem._OAM_read (i * 4 + 2)) (Ppumem._OAM_read (i * 4 + 3))
         done;
         Printf.printf "\n%!"
-        | `Key_down when key_scancode event = `S ->
-          let tile = Ppu.get_CHR_tile (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) false false in
-          (*let tile = Ppu.get_CHR_tile 0 0xA2 in*)
-          for i = 0 to 7 do
-            for j = 0 to 7 do
-              if tile.(i).(j) = 0 then print_char '.'
-              else print_int tile.(i).(j)
+
+      | `Key_down when key_scancode event = `K0 ->
+        let tile = Ppu.get_CHR_tile (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) false false in
+        (*let tile = Ppu.get_CHR_tile 0 0xA2 in*)
+        for i = 0 to 7 do
+          for j = 0 to 7 do
+            if tile.(i).(j) = 0 then print_char '.'
+            else print_int tile.(i).(j)
+          done;
+          print_newline ()
+        done
+
+      | `Key_down when key_scancode event = `C ->
+        let tile_colors = Ppu.get_CHR_tile_colors true (Ppumem._OAM_read 2 land 0b11) (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) false false in
+        for i = 0 to 7 do
+          for j = 0 to 7 do
+            if tile_colors.(i).(j) = -1 then print_string ".. "
+            else Printf.printf "%02X " tile_colors.(i).(j)
+          done;
+          print_newline ()
+        done
+
+      | `Key_down when key_scancode event = `V ->
+        for i = 0 to 7 do
+          let start = 0x3F00 + 4 * i in
+          Printf.printf "0x%02X 0x%02X 0x%02X 0x%02X\n%!" (Ppumem.read start)
+          (Ppumem.read (start + 1)) (Ppumem.read (start + 2)) (Ppumem.read (start + 3))
+        done
+
+      | `Key_down when key_scancode event = `B ->
+        for i = 0 to 29 do
+          for j = 0 to 31 do
+            Printf.printf "%02X " (Ppumem.read (0x2000 + i * 32 + j))
+          done;
+          Printf.printf "\n%!"
+        done
+
+      | `Key_down when key_scancode event = `M ->
+        for i = 0 to 7 do
+          for j = 0 to 7 do
+            let attr_byte = Ppumem.read (0x23C0 + 8 * i + j) in
+            for n = 7 downto 0 do
+              if Utils.nth_bit n attr_byte then print_int 1
+              else print_int 0
             done;
-            print_newline ()
-          done
+            print_char ' '
+          done;
+          print_newline ()
+        done
 
-        | `Key_down when key_scancode event = `C ->
-          let tile_colors = Ppu.get_CHR_tile_colors true (Ppumem._OAM_read 2 land 0b11) (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) false false in
-          for i = 0 to 7 do
-            for j = 0 to 7 do
-              if tile_colors.(i).(j) = -1 then print_string ".. "
-              else Printf.printf "%02X " tile_colors.(i).(j)
-            done;
-            print_newline ()
-          done
+      
+      | `Key_up -> update_input ~down:0 (key_scancode event)
+      | `Key_down -> update_input ~down:1 (key_scancode event)
 
-        | `Key_down when key_scancode event = `V ->
-          for i = 0 to 7 do
-            let start = 0x3F00 + 4 * i in
-            Printf.printf "0x%02X 0x%02X 0x%02X 0x%02X\n%!" (Ppumem.read start)
-            (Ppumem.read (start + 1)) (Ppumem.read (start + 2)) (Ppumem.read (start + 3))
-          done
 
-        | `Key_down when key_scancode event = `B ->
-          for i = 0 to 29 do
-            for j = 0 to 31 do
-              Printf.printf "%02X " (Ppumem.read (0x2000 + i * 32 + j))
-            done;
-            Printf.printf "\n%!"
-          done
-
-        | `Key_down when key_scancode event = `A ->
-          for i = 0 to 7 do
-            for j = 0 to 7 do
-              let attr_byte = Ppumem.read (0x23C0 + 8 * i + j) in
-              for n = 7 downto 0 do
-                if Utils.nth_bit n attr_byte then print_int 1
-                else print_int 0
-              done;
-              print_char ' '
-            done;
-            print_newline ()
-          done
-
-      (*| `Key_down when key_scancode e = `Apostrophe -> Debugger.break_on_step := true
-      | `Key_up when key_scancode e = `S -> save_screenshot nes.ppu.frame_content
-      | `Key_up -> update_input ~down:false (key_scancode e)
-      | `Key_down -> update_input ~down:true (key_scancode e)*)
       | _ -> ()
   done;
 done

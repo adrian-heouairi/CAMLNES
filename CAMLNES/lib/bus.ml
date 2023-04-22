@@ -2,6 +2,9 @@ open Ppu_constants
 
 let bus = Array.make 65536 0
 
+let controller1 = Array.make 8 0
+let controller1_read_counter = ref 0
+
 type _PPU_state = {
   mutable vram_addr : int;
   mutable scroll_x : int;
@@ -71,6 +74,12 @@ let read addr =
     _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000
   );
 
+  if real_addr = 0x4016 then (
+    if !controller1_read_counter >= 8 then ret := 1
+    else ret := controller1.(!controller1_read_counter);
+    controller1_read_counter := !controller1_read_counter + 1
+  );
+
   if !ret <> -1 then !ret else bus.(real_addr)
 
 let do_OAMDMA msb =
@@ -99,5 +108,7 @@ let write addr byte =
     Ppumem.write _PPU_state.vram_addr byte;
   _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000);
   if real_addr = _OAMDMA then do_OAMDMA byte;
+
+  if real_addr = 0x4016 && byte = 0 then controller1_read_counter := 0;
 
   bus.(real_addr) <- byte
