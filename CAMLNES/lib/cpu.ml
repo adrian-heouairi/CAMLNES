@@ -109,6 +109,7 @@ let branch byte =
   state.program_counter <- state.program_counter + offset
 
 let _ADC (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   let addition =
     state.accumulator + byte_at_addr + Bool.to_int state.carry_flag
   in
@@ -123,11 +124,13 @@ let _ADC (calculated_addr, byte_at_addr) =
   state.accumulator <- addition
 
 let _AND (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   state.accumulator <- state.accumulator land byte_at_addr;
   state.zero_flag <- state.accumulator = 0;
   state.negative_flag <- state.accumulator > 127
 
 let _ASL (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   let value =
     if calculated_addr = -1 then state.accumulator else byte_at_addr
   in
@@ -148,6 +151,7 @@ let _BEQ (calculated_addr, byte_at_addr) =
   if state.zero_flag then branch byte_at_addr
 
 let _BIT (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   let and_result = state.accumulator land byte_at_addr in
   let () = state.zero_flag <- and_result = 0 in
   let () = state.overflow_flag <- byte_at_addr land 64 > 0 in
@@ -190,15 +194,19 @@ let compare byte1 byte2 =
   state.negative_flag <- result > 127
 
 let _CMP (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   compare state.accumulator byte_at_addr
 
 let _CPX (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   compare state.index_register_X byte_at_addr
 
 let _CPY (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   compare state.index_register_Y byte_at_addr
 
 let _DEC (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   let result = if byte_at_addr = 0 then 255 else byte_at_addr - 1 in
   Bus.write calculated_addr result;
   state.zero_flag <- result = 0;
@@ -217,11 +225,13 @@ let _DEY (calculated_addr, byte_at_addr) =
   state.negative_flag <- get_nth_bit 7 state.index_register_Y
 
 let _EOR (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   state.accumulator <- state.accumulator lxor byte_at_addr;
   state.zero_flag <- state.accumulator = 0;
   state.negative_flag <- get_nth_bit 7 state.accumulator
 
 let _INC (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   let result = (byte_at_addr + 1) mod 256 in
   Bus.write calculated_addr result;
   state.zero_flag <- result = 0;
@@ -249,21 +259,25 @@ let _JSR (calculated_addr, byte_at_addr) =
   state.program_counter <- calculated_addr
 
 let _LDA (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   state.accumulator <- byte_at_addr;
   state.zero_flag <- byte_at_addr = 0;
   state.negative_flag <- get_nth_bit 7 byte_at_addr
 
 let _LDX (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   state.index_register_X <- byte_at_addr;
   state.zero_flag <- byte_at_addr = 0;
   state.negative_flag <- get_nth_bit 7 byte_at_addr
 
 let _LDY (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   state.index_register_Y <- byte_at_addr;
   state.zero_flag <- byte_at_addr = 0;
   state.negative_flag <- get_nth_bit 7 byte_at_addr
 
 let _LSR (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   state.carry_flag <- get_nth_bit 0 byte_at_addr;
   state.negative_flag <- false;
   let result = byte_at_addr lsr 1 in
@@ -274,6 +288,7 @@ let _LSR (calculated_addr, byte_at_addr) =
 let _NOP (calculated_addr, byte_at_addr) = ()
 
 let _ORA (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   state.accumulator <- state.accumulator lor byte_at_addr;
   state.zero_flag <- state.accumulator = 0;
   state.negative_flag <- get_nth_bit 7 state.accumulator
@@ -291,6 +306,7 @@ let _PLA (calculated_addr, byte_at_addr) =
 let _PLP (calculated_addr, byte_at_addr) = byte_to_status @@ stack_pull ()
 
 let _ROL (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   let result = (byte_at_addr lsl 1) land 255 lor Bool.to_int state.carry_flag in
   state.carry_flag <- get_nth_bit 7 byte_at_addr;
   set_zero_and_negative_flags result;
@@ -298,6 +314,7 @@ let _ROL (calculated_addr, byte_at_addr) =
   else Bus.write calculated_addr result
 
 let _ROR (calculated_addr, byte_at_addr) =
+  if calculated_addr <> -1 then ignore (Bus.read calculated_addr);
   let result = (byte_at_addr lsr 1) lor (Bool.to_int state.carry_flag * 128) in
   state.carry_flag <- get_nth_bit 0 byte_at_addr;
   set_zero_and_negative_flags result;
@@ -313,7 +330,7 @@ let _RTS (calculated_addr, byte_at_addr) =
   let first_byte = stack_pull () in
   state.program_counter <- (first_byte + (stack_pull () * 256)) mod 65536
 
-let _SBC (calculated_addr, byte_at_addr) = _ADC (-1, byte_at_addr lxor 255)
+let _SBC (calculated_addr, byte_at_addr) = _ADC (calculated_addr, byte_at_addr lxor 255)
 let _SEC (calculated_addr, byte_at_addr) = state.carry_flag <- true
 let _SED (calculated_addr, byte_at_addr) = state.decimal_mode_flag <- true
 let _SEI (calculated_addr, byte_at_addr) = state.interrupt_disable_flag <- true
