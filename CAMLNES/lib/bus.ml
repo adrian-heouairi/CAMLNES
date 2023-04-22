@@ -70,7 +70,6 @@ let read addr =
   if real_addr = _PPUDATA then (
     if _PPU_state.vram_addr <= 0x3EFF then ret := _PPU_state._PPUDATA_read_buffer
     else ret := Ppumem.read _PPU_state.vram_addr;
-    ret := !ret lor 0x40; (* TODO do this better *)
     _PPU_state._PPUDATA_read_buffer <- Ppumem.read _PPU_state.vram_addr;
     _PPU_state.vram_addr <- (_PPU_state.vram_addr + get_vram_addr_increment ()) mod 0x4000
   );
@@ -78,6 +77,7 @@ let read addr =
   if real_addr = 0x4016 then (
     if !controller1_read_counter >= 8 then ret := 1
     else ret := controller1.(!controller1_read_counter);
+    ret := !ret lor 0x40; (* TODO do this better *)
     controller1_read_counter := !controller1_read_counter + 1
   );
 
