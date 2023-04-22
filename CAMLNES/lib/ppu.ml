@@ -221,18 +221,36 @@ let draw_next_pixel () =
     render_background ()
   );
 
-  if draw.fg.(draw.y).(draw.x) <= -64 then set_sprite_zero_hit true;
+  
 
-  (*if draw.fg.(draw.y).(draw.x) <> transparent_pixel then
-    draw.screen.(draw.y).(draw.x) <- (abs draw.fg.(draw.y).(draw.x)) mod 64
-  else draw.screen.(draw.y).(draw.x) <- 0x1D; (* 0x1D is black *)*)
 
-  if draw.fg.(draw.y).(draw.x) = transparent_pixel && draw.bg.(draw.y).(draw.x) = transparent_pixel then
+
+
+
+  let bg_px = draw.bg.(draw.y).(draw.x) in
+  let fg_px = draw.fg.(draw.y).(draw.x) in
+
+  if 64 <= abs fg_px && abs fg_px <= 127 then
+    (if bg_px <> transparent_pixel then set_sprite_zero_hit true);
+
+  if fg_px = transparent_pixel && bg_px = transparent_pixel then
     draw.screen.(draw.y).(draw.x) <- Ppumem.read 0x3F00
-  else if draw.fg.(draw.y).(draw.x) <> transparent_pixel then
-    draw.screen.(draw.y).(draw.x) <- (abs draw.fg.(draw.y).(draw.x)) mod 64
-  else
-    draw.screen.(draw.y).(draw.x) <- draw.bg.(draw.y).(draw.x);
+  else if fg_px = transparent_pixel then
+    draw.screen.(draw.y).(draw.x) <- bg_px
+  else if bg_px = transparent_pixel then
+    draw.screen.(draw.y).(draw.x) <- abs fg_px mod 64
+  else ( (* Both fg and bg pixels are not transparent *)
+    if fg_px < 0 then draw.screen.(draw.y).(draw.x) <- bg_px
+    else draw.screen.(draw.y).(draw.x) <- abs fg_px mod 64
+  );
+
+
+
+
+
+
+
+
 
   if draw.x = 255 && draw.y = 239 then (
     screen_to_bigarray ();
