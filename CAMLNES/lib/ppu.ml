@@ -183,9 +183,9 @@ let render_background () =
       let bottom = i mod 4 >= 2 in
       let palette = ref 0 in
       (if not right && not bottom then palette := attr_table_byte land 0b11
-      else if right && not bottom then palette := attr_table_byte land 0b1100 lsr 2
-      else if not right && bottom then palette := attr_table_byte land 0b11_0000 lsr 4
-      else palette := attr_table_byte land 0b1100_0000 lsr 6;);
+      else if right && not bottom then palette := (attr_table_byte land 0b1100) lsr 2
+      else if not right && bottom then palette := (attr_table_byte land 0b11_0000) lsr 4
+      else palette := (attr_table_byte land 0b1100_0000) lsr 6;);
 
       let tile_colors = get_CHR_tile_colors
         false !palette (get_background_pattern_table_addr ()) tile_number false false in

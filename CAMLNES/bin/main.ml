@@ -52,6 +52,7 @@ while not !quit do
       | `Key_down when key_scancode event = `Escape -> quit := true
       | `Key_down when key_scancode event = `P -> pause := not !pause
       | `Key_down when key_scancode event = `R -> Init.init Sys.argv.(1)
+      
       | `Key_down when key_scancode event = `O ->
         for i = 0 to 63 do
           Printf.printf "Sprite %d: %d 0x%02X 0x%02X %d %!" i
@@ -85,6 +86,27 @@ while not !quit do
             let start = 0x3F00 + 4 * i in
             Printf.printf "0x%02X 0x%02X 0x%02X 0x%02X\n%!" (Ppumem.read start)
             (Ppumem.read (start + 1)) (Ppumem.read (start + 2)) (Ppumem.read (start + 3))
+          done
+
+        | `Key_down when key_scancode event = `B ->
+          for i = 0 to 29 do
+            for j = 0 to 31 do
+              Printf.printf "%02X " (Ppumem.read (0x2000 + i * 32 + j))
+            done;
+            Printf.printf "\n%!"
+          done
+
+        | `Key_down when key_scancode event = `A ->
+          for i = 0 to 7 do
+            for j = 0 to 7 do
+              let attr_byte = Ppumem.read (0x23C0 + 8 * i + j) in
+              for n = 7 downto 0 do
+                if Utils.nth_bit n attr_byte then print_int 1
+                else print_int 0
+              done;
+              print_char ' '
+            done;
+            print_newline ()
           done
 
       (*| `Key_down when key_scancode e = `Apostrophe -> Debugger.break_on_step := true
