@@ -330,7 +330,9 @@ let _RTS (calculated_addr, byte_at_addr) =
   let first_byte = stack_pull () in
   state.program_counter <- (first_byte + (stack_pull () * 256)) mod 65536
 
-let _SBC (calculated_addr, byte_at_addr) = _ADC (calculated_addr, byte_at_addr lxor 255)
+let _SBC (calculated_addr, byte_at_addr) =
+  let r = ref byte_at_addr in if calculated_addr <> -1 then r := Bus.read calculated_addr; let byte_at_addr = !r in
+  _ADC (-1, byte_at_addr lxor 255)
 let _SEC (calculated_addr, byte_at_addr) = state.carry_flag <- true
 let _SED (calculated_addr, byte_at_addr) = state.decimal_mode_flag <- true
 let _SEI (calculated_addr, byte_at_addr) = state.interrupt_disable_flag <- true
