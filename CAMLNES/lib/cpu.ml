@@ -593,7 +593,7 @@ let run_next_instruction () =
 
     logging.cur_instr <- Buffer.contents buffer;
     try
-      Printf.fprintf logging.log "%s\n" logging.cur_instr;
+      Printf.fprintf logging.log "%s\n%!" logging.cur_instr;
     with exc -> ()
   );
 
