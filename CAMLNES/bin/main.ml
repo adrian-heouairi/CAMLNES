@@ -23,8 +23,8 @@ let quit = ref false;;
 let pause = ref false;;
 
 let update_input keycode ~down = match keycode with
-  | `K -> Bus.controller1.(0) <- down
-  | `L -> Bus.controller1.(1) <- down
+  | `L -> Bus.controller1.(0) <- down
+  | `K -> Bus.controller1.(1) <- down
   | `Backspace -> Bus.controller1.(2) <- down
   | `Return -> Bus.controller1.(3) <- down
   | `W -> Bus.controller1.(4) <- down
@@ -55,7 +55,7 @@ while not !quit do
     Sdl.render_present renderer;
   );
 
-  Unix.sleepf (0.25 /. 60.0);
+  (*Unix.sleepf (0.25 /. 60.0);*)
 
   while Sdl.poll_event (Some event) do
     match Sdl.Event.(enum (get event typ)) with
