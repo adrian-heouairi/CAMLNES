@@ -65,7 +65,7 @@ while not !quit do
       | `Key_down when key_scancode event = `R -> Init.init Sys.argv.(1)
     
 
-
+      | `Key_down when key_scancode event = `Equals -> Cpu.enable_logging "/tmp/cpu-main.log"
 
       | `Key_down when key_scancode event = `O ->
         for i = 0 to 63 do
