@@ -80,6 +80,7 @@ let read addr =
     ret := !ret lor 0x40; (* TODO do this better *)
     controller1_read_counter := !controller1_read_counter + 1
   );
+  if real_addr = 0x4017 then ret := 0x40;
 
   if !ret <> -1 then !ret else bus.(real_addr)
 
