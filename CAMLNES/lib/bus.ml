@@ -103,7 +103,11 @@ let write addr byte =
     else _PPU_state.scroll_y <- byte;
     _PPU_state.write_toggle_w <- not _PPU_state.write_toggle_w);
   if real_addr = _PPUADDR then
-    (if not _PPU_state.write_toggle_w then _PPU_state.vram_addr <- byte lsl 8 mod 0x4000
+    (if not _PPU_state.write_toggle_w then (
+      _PPU_state.vram_addr <- byte lsl 8 mod 0x4000;
+      set_nth_bit_raw _PPUCTRL 1 (Utils.nth_bit 3 byte);
+      set_nth_bit_raw _PPUCTRL 0 (Utils.nth_bit 2 byte);
+    )
     else _PPU_state.vram_addr <- (_PPU_state.vram_addr + byte) mod 0x4000;
     _PPU_state.write_toggle_w <- not _PPU_state.write_toggle_w);
   if real_addr = _PPUDATA then (
