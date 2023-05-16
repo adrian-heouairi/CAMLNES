@@ -1,4 +1,6 @@
 (library
  (name CAMLNES)
  ;(libraries unix)
- (public_name CAMLNES))
+ (public_name CAMLNES)
+ ;(ocamlopt_flags (:standard -g))
+)

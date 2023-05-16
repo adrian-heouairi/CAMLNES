@@ -1,4 +1,6 @@
 (executable
  (public_name CAMLNES)
  (name main)
- (libraries CAMLNES unix tsdl))
+ (libraries CAMLNES unix tsdl)
+ ;(ocamlopt_flags (:standard -g))
+)
