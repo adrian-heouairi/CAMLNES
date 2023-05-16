@@ -84,37 +84,13 @@ let get_CHR_tile table_addr number flip_horz flip_vert =
         else if bit1 && not bit2 then 1
         else if (not bit1) && bit2 then 2
         else 3
-      in tile.(i).(j) <- res
+      in let flip_i = if flip_vert then 7 - i else i in
+      let flip_j = if flip_horz then 7 - j else j in
+      tile.(flip_i).(flip_j) <- res
     done;
   done;
 
-  let ref_tile = ref tile in
-
-  (if flip_horz then
-    let hflip = Array.make_matrix 8 8 0 in
-
-    for j = 0 to 7 do
-      for i = 0 to 7 do
-        hflip.(i).(7 - j) <- !ref_tile.(i).(j)
-      done
-    done;
-
-    ref_tile := hflip;
-  );
-
-  (if flip_vert then
-    let vflip = Array.make_matrix 8 8 0 in
-
-    for i = 0 to 7 do
-      for j = 0 to 7 do
-        vflip.(7 - i).(j) <- !ref_tile.(i).(j)
-      done
-    done;
-
-    ref_tile := vflip;
-  );
-
-  !ref_tile
+  tile
 
 (* Returns a 8x8 array containing constant transparent_pixel or a color between 0 and 63 *)
 let get_CHR_tile_colors sprite_palette palette_number table_addr number flip_horz flip_vert =
