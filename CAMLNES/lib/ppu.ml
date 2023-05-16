@@ -47,7 +47,8 @@ type draw = {
   mutable x : int;
   mutable y : int;
   fg : int array array;
-  bg : int array array;
+  bg1 : int array array;
+  bg2 : int array array;
   bigarray : (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t;
 }
 
@@ -55,7 +56,8 @@ let draw = {
   x = 0;
   y = 0;
   fg = Array.make_matrix 240 256 transparent_pixel;
-  bg = Array.make_matrix 480 512 transparent_pixel;
+  bg1 = Array.make_matrix 240 256 transparent_pixel;
+  bg2 = Array.make_matrix 240 256 transparent_pixel;
   bigarray = Bigarray.Array1.create Bigarray.int8_unsigned Bigarray.c_layout (256 * 240 * 3)
 }
 
@@ -131,13 +133,13 @@ let render_sprites () =
       draw.fg y_pos x_pos (sprite_color_transform i behind_bg)
   done
 
-let render_background () =
+let render_background nametable_addr array =
   for i = 0 to 29 do
     for j = 0 to 31 do
-      let tile_number = Ppumem.read (0x2000 + i * 32 + j) in
+      let tile_number = Ppumem.read (nametable_addr + i * 32 + j) in
       let attr_table_x = j / 4 in
       let attr_table_y = i / 4 in
-      let attr_table_byte = Ppumem.read (0x23C0 + 8 * attr_table_y + attr_table_x) in
+      let attr_table_byte = Ppumem.read (nametable_addr + 0x3C0 + 8 * attr_table_y + attr_table_x) in
       let right = j mod 4 >= 2 in
       let bottom = i mod 4 >= 2 in
       let palette = ref 0 in
@@ -148,9 +150,15 @@ let render_background () =
 
       write_CHR_tile_colors
         false !palette (get_background_pattern_table_addr ()) tile_number false false
-        draw.bg (i * 8) (j * 8) Fun.id
+        array (i * 8) (j * 8) Fun.id
     done
   done
+
+let render_backgrounds () =
+  render_background 0x2000 draw.bg1;
+  if Cartridge.cartridge.vertical_mirroring then render_background 0x2400 draw.bg2
+  else render_background 0x2800 draw.bg2
+
 
 let write_to_bigarray color =
   let rgb_color = colors.(color) in
@@ -158,20 +166,30 @@ let write_to_bigarray color =
   draw.bigarray.{(draw.y * 256 + draw.x) * 3 + 1} <- rgb_color lsr 8;
   draw.bigarray.{(draw.y * 256 + draw.x) * 3 + 2} <- rgb_color
 
+let get_bg_pixel y x =
+  if x < 256 && y < 240 then draw.bg1.(y).(x)
+  else if x >= 256 && y < 240 then
+    let array = if Cartridge.cartridge.vertical_mirroring then draw.bg2 else draw.bg1 in
+    array.(y).(x - 256)
+  else if x < 256 && y >= 240 then
+    let array = if Cartridge.cartridge.vertical_mirroring then draw.bg1 else draw.bg2 in
+    array.(y - 240).(x)
+  else draw.bg2.(y - 240).(x - 256)
+
 let draw_next_pixel () =
   if draw.x = 0 && draw.y = 0 then (
     set_vblank_started false;
     set_sprite_zero_hit false;
 
     render_sprites ();
-    render_background ()
+    render_backgrounds ()
   );
 
   let (x_offset, y_offset) = get_base_nametable_pixel_offsets () in
   let x_offset = x_offset + Bus._PPU_state.scroll_x in
   let y_offset = y_offset + Bus._PPU_state.scroll_y in
 
-  let bg_px = draw.bg.((y_offset + draw.y) mod 480).((x_offset + draw.x) mod 512) in
+  let bg_px = get_bg_pixel ((y_offset + draw.y) mod 480) ((x_offset + draw.x) mod 512) in
   let fg_px = draw.fg.(draw.y).(draw.x) in
 
   if 64 <= abs fg_px && abs fg_px <= 127 then
