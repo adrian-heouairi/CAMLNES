@@ -75,16 +75,6 @@ while not !quit do
         done;
         Printf.printf "\n%!"
 
-      | `Key_down when key_scancode event = `C ->
-        let tile_colors = Ppu.get_CHR_tile_colors true (Ppumem._OAM_read 2 land 0b11) (Ppu.get_sprite_pattern_table_addr ()) (Ppumem._OAM_read 1) false false in
-        for i = 0 to 7 do
-          for j = 0 to 7 do
-            if tile_colors.(i).(j) = -1 then print_string ".. "
-            else Printf.printf "%02X " tile_colors.(i).(j)
-          done;
-          print_newline ()
-        done
-
       | `Key_down when key_scancode event = `V ->
         for i = 0 to 7 do
           let start = 0x3F00 + 4 * i in

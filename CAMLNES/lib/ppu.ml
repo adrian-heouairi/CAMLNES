@@ -72,10 +72,10 @@ let colors = [| 0x747474; 0x24188c; 0x0000a8; 0x44009c; 0x8c0074; 0xa80010;
 0x000000; 0x000000; |]
 
 (* Returns a 8x8 array containing constant transparent_pixel or a color between 0 and 63 *)
-let get_CHR_tile_colors sprite_palette palette_number table_addr number flip_horz flip_vert =
+let write_CHR_tile_colors sprite_palette palette_number table_addr number flip_horz flip_vert
+array i_offset j_offset color_transform_fun =
   let palette_start = if sprite_palette then 0x3F10 else 0x3F00 in
   let start = table_addr + number * 16 in
-  let tile_colors = Array.make_matrix 8 8 0x1D in
   for i = 0 to 7 do
     for j = 0 to 7 do
       let bit1 = nth_bit (7 - j) (Ppumem.read (start + i)) in
@@ -88,14 +88,23 @@ let get_CHR_tile_colors sprite_palette palette_number table_addr number flip_hor
       
       let color = if res = 0 then transparent_pixel
       else Ppumem.read (palette_start + palette_number * 4 + res) in
+      let color = color_transform_fun color in
 
       let flip_i = if flip_vert then 7 - i else i in
       let flip_j = if flip_horz then 7 - j else j in
-      tile_colors.(flip_i).(flip_j) <- color
+      try array.(i_offset + flip_i).(j_offset + flip_j) <- color
+    with _ -> ()
     done;
-  done;
+  done
 
-  tile_colors
+let sprite_color_transform i behind_bg color =
+  if color = transparent_pixel then transparent_pixel
+  else (
+    let ret = ref color in
+    if i = 0 then ret := !ret + 64;
+    if behind_bg then ret := - !ret;
+    !ret
+  )
 
 (* Modifies 256x240 draw.fg to contain: constant transparent_pixel for any
    pixel not containing a sprite or containing a sprite which is transparent at
@@ -119,23 +128,9 @@ let render_sprites () =
     let flip_vert = nth_bit 7 (Ppumem._OAM_read (i * 4 + 2)) in
     let x_pos = Ppumem._OAM_read (i * 4 + 3) in
 
-    let tile_colors = get_CHR_tile_colors
-      true palette_number (get_sprite_pattern_table_addr ()) tile_number flip_horz flip_vert in
-
-    for m = 0 to 7 do
-      for n = 0 to 7 do
-        try
-          if tile_colors.(m).(n) <> transparent_pixel then (
-            let pixel_color = ref tile_colors.(m).(n) in
-            if i = 0 then pixel_color := !pixel_color + 64;
-            if behind_bg then pixel_color := - !pixel_color;
-
-            draw.fg.(y_pos + m).(x_pos + n) <- !pixel_color
-          )
-        with _ -> ()
-      done
-    done
-
+    write_CHR_tile_colors
+      true palette_number (get_sprite_pattern_table_addr ()) tile_number flip_horz flip_vert
+      draw.fg y_pos x_pos (sprite_color_transform i behind_bg)
   done
 
 let render_background () =
@@ -153,18 +148,9 @@ let render_background () =
       else if not right && bottom then palette := (attr_table_byte land 0b11_0000) lsr 4
       else palette := (attr_table_byte land 0b1100_0000) lsr 6;);
 
-      let tile_colors = get_CHR_tile_colors
-        false !palette (get_background_pattern_table_addr ()) tile_number false false in
-      
-        for m = 0 to 7 do
-          for n = 0 to 7 do
-            (*try*)
-              (*if tile_colors.(m).(n) <> transparent_pixel then ( *)
-                draw.bg.(i * 8 + m).(j * 8 + n) <- tile_colors.(m).(n)
-              (* ) *)
-            (*with _ -> ()*)
-          done
-        done
+      write_CHR_tile_colors
+        false !palette (get_background_pattern_table_addr ()) tile_number false false
+        draw.bg (i * 8) (j * 8) Fun.id
     done
   done
 
