@@ -46,7 +46,6 @@ let transparent_pixel = 1000
 type draw = {
   mutable x : int;
   mutable y : int;
-  screen : int array array;
   fg : int array array;
   bg : int array array;
   bigarray : (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t;
@@ -55,7 +54,6 @@ type draw = {
 let draw = {
   x = 0;
   y = 0;
-  screen = Array.make_matrix 240 256 0;
   fg = Array.make_matrix 240 256 transparent_pixel;
   bg = Array.make_matrix 480 512 transparent_pixel;
   bigarray = Bigarray.Array1.create Bigarray.int8_unsigned Bigarray.c_layout (256 * 240 * 3)
@@ -154,15 +152,11 @@ let render_background () =
     done
   done
 
-let screen_to_bigarray () =
-  for y = 0 to 239 do
-    for x = 0 to 255 do
-      let rgb_color = colors.(draw.screen.(y).(x)) in
-      draw.bigarray.{(y * 256 + x) * 3} <- rgb_color lsr 16;
-      draw.bigarray.{(y * 256 + x) * 3 + 1} <- rgb_color lsr 8;
-      draw.bigarray.{(y * 256 + x) * 3 + 2} <- rgb_color
-    done
-  done
+let write_to_bigarray color =
+  let rgb_color = colors.(color) in
+  draw.bigarray.{(draw.y * 256 + draw.x) * 3} <- rgb_color lsr 16;
+  draw.bigarray.{(draw.y * 256 + draw.x) * 3 + 1} <- rgb_color lsr 8;
+  draw.bigarray.{(draw.y * 256 + draw.x) * 3 + 2} <- rgb_color
 
 let draw_next_pixel () =
   if draw.x = 0 && draw.y = 0 then (
@@ -173,10 +167,6 @@ let draw_next_pixel () =
     render_background ()
   );
 
-  
-
-
-
 
 
   let bg_px = draw.bg.(draw.y).(draw.x) in
@@ -186,27 +176,19 @@ let draw_next_pixel () =
     (if bg_px <> transparent_pixel then set_sprite_zero_hit true);
 
   if fg_px = transparent_pixel && bg_px = transparent_pixel then
-    draw.screen.(draw.y).(draw.x) <- Ppumem.read 0x3F00
+    write_to_bigarray (Ppumem.read 0x3F00)
   else if fg_px = transparent_pixel then
-    draw.screen.(draw.y).(draw.x) <- bg_px
+    write_to_bigarray bg_px
   else if bg_px = transparent_pixel then
-    draw.screen.(draw.y).(draw.x) <- abs fg_px mod 64
+    write_to_bigarray (abs fg_px mod 64)
   else ( (* Both fg and bg pixels are not transparent *)
-    if fg_px < 0 then draw.screen.(draw.y).(draw.x) <- bg_px
-    else draw.screen.(draw.y).(draw.x) <- abs fg_px mod 64
+    if fg_px < 0 then write_to_bigarray bg_px
+    else write_to_bigarray (abs fg_px mod 64)
   );
 
 
 
-
-
-
-
-
-
   if draw.x = 255 && draw.y = 239 then (
-    screen_to_bigarray ();
-
     set_vblank_started true;
     if get_generate_NMI () then Cpu.state.nmi <- true
   );
