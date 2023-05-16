@@ -71,10 +71,11 @@ let colors = [| 0x747474; 0x24188c; 0x0000a8; 0x44009c; 0x8c0074; 0xa80010;
 0xfcbcb0; 0xfcd8a8; 0xfce4a0; 0xe0fca0; 0xa8f0bc; 0xb0fccc; 0x9cfcf0; 0xc4c4c4;
 0x000000; 0x000000; |]
 
-(* Returns a 8x8 array containing values between 0 and 3 *)
-let get_CHR_tile table_addr number flip_horz flip_vert =
+(* Returns a 8x8 array containing constant transparent_pixel or a color between 0 and 63 *)
+let get_CHR_tile_colors sprite_palette palette_number table_addr number flip_horz flip_vert =
+  let palette_start = if sprite_palette then 0x3F10 else 0x3F00 in
   let start = table_addr + number * 16 in
-  let tile = Array.make_matrix 8 8 0 in
+  let tile_colors = Array.make_matrix 8 8 0x1D in
   for i = 0 to 7 do
     for j = 0 to 7 do
       let bit1 = nth_bit (7 - j) (Ppumem.read (start + i)) in
@@ -83,26 +84,15 @@ let get_CHR_tile table_addr number flip_horz flip_vert =
         if (not bit1) && not bit2 then 0
         else if bit1 && not bit2 then 1
         else if (not bit1) && bit2 then 2
-        else 3
-      in let flip_i = if flip_vert then 7 - i else i in
+        else 3 in
+      
+      let color = if res = 0 then transparent_pixel
+      else Ppumem.read (palette_start + palette_number * 4 + res) in
+
+      let flip_i = if flip_vert then 7 - i else i in
       let flip_j = if flip_horz then 7 - j else j in
-      tile.(flip_i).(flip_j) <- res
+      tile_colors.(flip_i).(flip_j) <- color
     done;
-  done;
-
-  tile
-
-(* Returns a 8x8 array containing constant transparent_pixel or a color between 0 and 63 *)
-let get_CHR_tile_colors sprite_palette palette_number table_addr number flip_horz flip_vert =
-  let palette_start = if sprite_palette then 0x3F10 else 0x3F00 in
-  let tile = get_CHR_tile table_addr number flip_horz flip_vert in
-  let tile_colors = Array.make_matrix 8 8 0x1D in
-  for i = 0 to 7 do
-    for j = 0 to 7 do
-      if tile.(i).(j) = 0 then tile_colors.(i).(j) <- transparent_pixel
-      else tile_colors.(i).(j) <-
-        Ppumem.read (palette_start + palette_number * 4 + tile.(i).(j))
-    done
   done;
 
   tile_colors
