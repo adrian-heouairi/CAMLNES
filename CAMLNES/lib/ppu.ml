@@ -2,13 +2,13 @@ open Utils
 open Ppu_constants
 
 (* PPUCTRL *)
-let get_base_nametable_addr () =
+let get_base_nametable_pixel_offsets () =
   match Bus.read_raw _PPUCTRL land 0b11 with
-  | 0 -> 0x2000
-  | 1 -> 0x2400
-  | 2 -> 0x2800
-  | 3 -> 0x2C00
-  | _ -> failwith "Error in get_base_nametable_addr"
+  | 0 -> (0, 0)
+  | 1 -> (256, 0)
+  | 2 -> (0, 240)
+  | 3 -> (256, 240)
+  | _ -> failwith ""
 
 (*let get_vram_addr_increment () =
   if Bus.read_raw _PPUCTRL land 0b100 = 0 then 1 else 32*)
@@ -167,9 +167,11 @@ let draw_next_pixel () =
     render_background ()
   );
 
+  let (x_offset, y_offset) = get_base_nametable_pixel_offsets () in
+  let x_offset = x_offset + Bus._PPU_state.scroll_x in
+  let y_offset = y_offset + Bus._PPU_state.scroll_y in
 
-
-  let bg_px = draw.bg.(draw.y).(draw.x) in
+  let bg_px = draw.bg.((y_offset + draw.y) mod 480).((x_offset + draw.x) mod 512) in
   let fg_px = draw.fg.(draw.y).(draw.x) in
 
   if 64 <= abs fg_px && abs fg_px <= 127 then
