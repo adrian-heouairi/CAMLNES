@@ -28,8 +28,10 @@ let update_input keycode ~down = match keycode with
   | `Backspace -> Bus.controller1.(2) <- down
   | `Return -> Bus.controller1.(3) <- down
   | `W -> Bus.controller1.(4) <- down
+  | `Z -> Bus.controller1.(4) <- down
   | `S -> Bus.controller1.(5) <- down
   | `A -> Bus.controller1.(6) <- down
+  | `Q -> Bus.controller1.(6) <- down
   | `D -> Bus.controller1.(7) <- down
   | _ -> ();;
 
