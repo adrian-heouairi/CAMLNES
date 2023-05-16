@@ -92,8 +92,9 @@ array i_offset j_offset color_transform_fun =
 
       let flip_i = if flip_vert then 7 - i else i in
       let flip_j = if flip_horz then 7 - j else j in
-      try array.(i_offset + flip_i).(j_offset + flip_j) <- color
-    with _ -> ()
+      if not (array == draw.fg && color = transparent_pixel) then
+        try array.(i_offset + flip_i).(j_offset + flip_j) <- color
+        with _ -> ()
     done;
   done
 
