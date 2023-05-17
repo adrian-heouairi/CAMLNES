@@ -11,7 +11,7 @@ Test:
 
     - apt update && apt install -y opam
     - opam init -y
-    - cd CAMLNES && opam switch -y create .
+    - cd CAMLNES && opam switch --confirm-level=unsafe-yes create .
     - eval $(opam env)
     - dune test
 #  cache:
