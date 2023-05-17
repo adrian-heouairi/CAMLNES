@@ -29,10 +29,14 @@ let update_input keycode ~down = match keycode with
   | `Return -> Bus.controller1.(3) <- down
   | `W -> Bus.controller1.(4) <- down
   | `Z -> Bus.controller1.(4) <- down
+  | `Up -> Bus.controller1.(4) <- down
   | `S -> Bus.controller1.(5) <- down
+  | `Down -> Bus.controller1.(5) <- down
   | `A -> Bus.controller1.(6) <- down
   | `Q -> Bus.controller1.(6) <- down
+  | `Left -> Bus.controller1.(6) <- down
   | `D -> Bus.controller1.(7) <- down
+  | `Right -> Bus.controller1.(7) <- down
   | _ -> ();;
 
 (*Cpu.enable_logging "/tmp/cpu-main.log";;*)
