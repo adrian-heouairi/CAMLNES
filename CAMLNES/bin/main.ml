@@ -60,6 +60,7 @@ Printf.printf "\n%!"
 
 while not !quit do
   if not !pause then (
+    let before = Int32.to_int (Sdl.get_ticks ()) in
     (*Printf.printf "%d %d\n%!" Ppu.draw.screen.(0).(0) Ppu.draw.screen.(0).(1);*)
     (* VBLank start *)
     for _ = 1 to 700 do
@@ -75,7 +76,12 @@ while not !quit do
     sdl_wrapper @@ Sdl.update_texture texture None Ppu.draw.bigarray (256 * 3);
     sdl_wrapper @@ Sdl.render_clear renderer;
     sdl_wrapper @@ Sdl.render_copy renderer texture;
-    Sdl.render_present renderer);
+    Sdl.render_present renderer;
+    
+    let after = Int32.to_int (Sdl.get_ticks ()) in
+    let difference = after - before in
+    if difference < 13 then Unix.sleepf ((Int.to_float (13 - difference)) /. 1000.0)
+  );
 
   (*Unix.sleepf (0.25 /. 60.0);*)
   while Sdl.poll_event (Some event) do
