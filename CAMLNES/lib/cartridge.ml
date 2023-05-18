@@ -4,7 +4,7 @@ type cartridge = {
   mutable number_of_CHR_banks : int;
   _PRG_banks : int array array;
   _CHR_banks : int array array;
-  mutable vertical_mirroring : bool
+  mutable vertical_mirroring : bool;
 }
 
 let cartridge =
@@ -15,7 +15,7 @@ let cartridge =
     _PRG_banks = Array.make 32 [||];
     (* 32 is arbitrary *)
     _CHR_banks = Array.make 32 [||];
-    vertical_mirroring = false
+    vertical_mirroring = false;
   }
 
 let parse_nes_file path =
