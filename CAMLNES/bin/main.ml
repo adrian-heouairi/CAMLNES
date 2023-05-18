@@ -77,11 +77,11 @@ while not !quit do
     sdl_wrapper @@ Sdl.render_clear renderer;
     sdl_wrapper @@ Sdl.render_copy renderer texture;
     Sdl.render_present renderer;
-    
+
     let after = Int32.to_int (Sdl.get_ticks ()) in
     let difference = after - before in
-    if difference < 13 then Unix.sleepf ((Int.to_float (13 - difference)) /. 1000.0)
-  );
+    if difference < 13 then
+      Unix.sleepf (Int.to_float (13 - difference) /. 1000.0));
 
   (*Unix.sleepf (0.25 /. 60.0);*)
   while Sdl.poll_event (Some event) do
