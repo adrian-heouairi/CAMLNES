@@ -6,6 +6,7 @@ type cartridge = {
   _CHR_banks : int array array;
   mutable vertical_mirroring : bool;
 }
+(** Represents a .nes file that has been parsed to extract all relevant data *)
 
 let cartridge =
   {
@@ -18,6 +19,7 @@ let cartridge =
     vertical_mirroring = false;
   }
 
+(** Parses the .nes file at `path`. Verifies it follows the iNES format *)
 let parse_nes_file path =
   try
     let in_channel = open_in_bin path in

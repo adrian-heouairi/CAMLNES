@@ -1,3 +1,6 @@
+(** Represents the 6502 CPU of the NES. It is not cycle-accurate, it can only run
+  instruction by instruction *)
+
 open Cpu_instructions
 
 type cpu_state = {
@@ -18,6 +21,7 @@ type cpu_state = {
   mutable nmi : bool;
   mutable nmi_launched : bool;
 }
+(** Represents the CPU state including registers, flags, as well as NMI handling *)
 
 let state =
   {
@@ -73,6 +77,7 @@ let disable_logging () =
   logging.logging <- false;
   logging.log <- stdout
 
+(** Converts the status flags to a byte. Bit 4 is 0. *)
 let status_to_byte () =
   (Bool.to_int state.carry_flag * 1)
   + (Bool.to_int state.zero_flag * 2)
@@ -83,6 +88,7 @@ let status_to_byte () =
   + (Bool.to_int state.overflow_flag * 64)
   + (Bool.to_int state.negative_flag * 128)
 
+(** Restore the flags state from byte `byte` *)
 let byte_to_status byte =
   state.carry_flag <- byte land 1 > 0;
   state.zero_flag <- byte land 2 > 0;
@@ -92,22 +98,25 @@ let byte_to_status byte =
   state.overflow_flag <- byte land 64 > 0;
   state.negative_flag <- byte land 128 > 0
 
+(** Push a byte to the built-in stack of the 6502 *)
 let stack_push byte =
   Bus.write_raw (0x0100 lor state.stack_pointer) byte;
   state.stack_pointer <- state.stack_pointer - 1;
   if state.stack_pointer = -1 then state.stack_pointer <- 255
 
+(** Removes a byte from the stack and returns it *)
 let stack_pull () =
   state.stack_pointer <- (state.stack_pointer + 1) mod 256;
   Bus.read (0x0100 lor state.stack_pointer)
 
-(* Returns as a boolean bit n of an integer, LSB is 0 *)
+(** Returns as a boolean bit n of an integer, LSB is 0 *)
 let get_nth_bit bit number = number land (1 lsl bit) > 0
 
 let set_zero_and_negative_flags byte =
   state.zero_flag <- byte = 0;
   state.negative_flag <- byte > 127
 
+(** Modifies the current position in the program by offset `byte` *)
 let branch byte =
   let offset = if byte < 128 then byte else byte - 256 in
   state.program_counter <- state.program_counter + offset
@@ -463,6 +472,7 @@ let _STP (calculated_addr, byte_at_addr) = ()
 let _TAS (calculated_addr, byte_at_addr) = ()
 let _XAA (calculated_addr, byte_at_addr) = ()
 
+(** Given an instruction name, returns the function that executes it *)
 let get_instruction instruction =
   match instruction with
   | ADC -> _ADC
@@ -543,6 +553,10 @@ let get_instruction instruction =
   | TAS -> _TAS
   | XAA -> _XAA
 
+(** Returns the address at which the byte targeted by the instruction is, by resolving
+    the operand of the instruction according to its addressing mode. Also gives
+    the value of the byte, but this value should be ignored (otherwise special behavior
+    when reading or writing special addresses is not triggered) *)
 let resolve_addr addr_mode following_byte_1 following_byte_2 =
   match addr_mode with
   | Immediate -> (-1, following_byte_1)
@@ -596,6 +610,9 @@ let resolve_addr addr_mode following_byte_1 following_byte_2 =
           + (Bus.read (following_byte_1 + (following_byte_2 * 256) + 1) * 256),
           -1 )
 
+(** Runs the next instruction pointed by the program counter, jumps to NMI beforehand
+    if it has been triggered
+     *)
 let run_next_instruction () =
   if state.nmi && not state.nmi_launched then (
     (*print_endline "CPU entered NMI";*)

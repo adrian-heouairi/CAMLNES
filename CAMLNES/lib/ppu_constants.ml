@@ -1,5 +1,6 @@
-(* These addresses refer to CPU memory space *)
+(** These addresses refer to CPU memory space *)
 let _PPUCTRL = 0x2000
+
 let _PPUMASK = 0x2001
 let _PPUSTATUS = 0x2002
 let _OAMADDR = 0x2003

@@ -1,7 +1,13 @@
+(** This module does what the PPU of the NES does: draw to the screen. In this
+    case, the screen is a bigarray (1D array compatible with C for SDL). This module
+    contains functions to parse the PPU state, as well as functions to draw the sprites
+    and the background. We draw pixel by pixel, letting the CPU execute regularly. *)
+
 open Utils
 open Ppu_constants
 
-(* PPUCTRL *)
+(* below functions are parsing of PPUCTRL *)
+
 let get_base_nametable_pixel_offsets () =
   match Bus.read_raw _PPUCTRL land 0b11 with
   | 0 -> (0, 0)
@@ -24,7 +30,8 @@ let get_sprite_size_is_8x8 () = Bus.read_raw _PPUCTRL land 0b10_0000 = 0
 let get_master_slave_select () = failwith "Not implemented"
 let get_generate_NMI () = Bus.read_raw _PPUCTRL land 0b1000_0000 > 0
 
-(* PPUMASK *)
+(* Below functions are parsing of PPUMASK *)
+
 let get_grayscale () = nth_bit 0 @@ Bus.read_raw _PPUMASK
 let get_show_background_at_left () = nth_bit 1 @@ Bus.read_raw _PPUMASK
 let get_show_sprites_at_left () = nth_bit 2 @@ Bus.read_raw _PPUMASK
@@ -34,24 +41,28 @@ let get_emphasize_red () = nth_bit 5 @@ Bus.read_raw _PPUMASK
 let get_emphasize_green () = nth_bit 6 @@ Bus.read_raw _PPUMASK
 let get_emphasize_blue () = nth_bit 7 @@ Bus.read_raw _PPUMASK
 
-(* PPUSTATUS *)
+(* Modify PPUSTATUS *)
+
 let set_sprite_zero_hit boolean =
   Bus.write_raw _PPUSTATUS @@ set_nth_bit 6 (Bus.read_raw _PPUSTATUS) boolean
 
 let set_vblank_started boolean =
   Bus.write_raw _PPUSTATUS @@ set_nth_bit 7 (Bus.read_raw _PPUSTATUS) boolean
 
+(** Constant that represents a transparent pixel *)
 let transparent_pixel = 1000
 
 type draw = {
-  mutable x : int;
-  mutable y : int;
-  fg : int array array;
-  bg1 : int array array;
-  bg2 : int array array;
+  mutable x : int;  (** Current pixel x position *)
+  mutable y : int;  (** Current pixel y position *)
+  fg : int array array;  (** Contains the sprites *)
+  bg1 : int array array;  (** Contains nametable A rendered *)
+  bg2 : int array array;  (** Contains nametable B rendered *)
   bigarray :
     (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t;
+      (** The bigarray passed to SDL every frame *)
 }
+(** All variables required to draw *)
 
 let draw =
   {
@@ -65,6 +76,8 @@ let draw =
         (256 * 240 * 3);
   }
 
+(** Each element is an RGB color on 3 bytes. This palette that comes from FCEUX
+    is as close as possible to the real NES *)
 let colors =
   [|
     0x747474;
@@ -133,7 +146,7 @@ let colors =
     0x000000;
   |]
 
-(* Returns a 8x8 array containing constant transparent_pixel or a color between 0 and 63 *)
+(** Copies an 8x8 array containing constant transparent_pixel or a color between 0 and 63 *)
 let write_CHR_tile_colors sprite_palette palette_number table_addr number
     flip_horz flip_vert array i_offset j_offset color_transform_fun =
   let palette_start = if sprite_palette then 0x3F10 else 0x3F00 in
@@ -171,7 +184,7 @@ let sprite_color_transform i behind_bg color =
     if behind_bg then ret := - !ret;
     !ret
 
-(* Modifies 256x240 draw.fg to contain: constant transparent_pixel for any
+(** Modifies 256x240 draw.fg to contain: constant transparent_pixel for any
    pixel not containing a sprite or containing a sprite which is transparent at
    that pixel. Every other pixel contains a color between 0 and 63.
    For sprite 0 we do color = color + 64. Then the color
@@ -201,6 +214,7 @@ let render_sprites () =
       (sprite_color_transform i behind_bg)
   done
 
+(** Renders a nametable to a 256*240 array of colors between 0 and 64 *)
 let render_background nametable_addr array =
   for i = 0 to 29 do
     for j = 0 to 31 do
@@ -232,12 +246,15 @@ let render_backgrounds () =
     render_background 0x2400 draw.bg2
   else render_background 0x2800 draw.bg2
 
+(** Writes the RGB color corresponding to 0-63 to the bigarray at (x,y) *)
 let write_to_bigarray color =
   let rgb_color = colors.(color) in
   draw.bigarray.{((draw.y * 256) + draw.x) * 3} <- rgb_color lsr 16;
   draw.bigarray.{(((draw.y * 256) + draw.x) * 3) + 1} <- rgb_color lsr 8;
   draw.bigarray.{(((draw.y * 256) + draw.x) * 3) + 2} <- rgb_color
 
+(** Uses backgrounds A and B to form a 512x480 array, mirrored vertically
+    or horizontally depending on the cartridge *)
 let get_bg_pixel y x =
   if x < 256 && y < 240 then draw.bg1.(y).(x)
   else if x >= 256 && y < 240 then
@@ -252,6 +269,8 @@ let get_bg_pixel y x =
     array.(y - 240).(x)
   else draw.bg2.(y - 240).(x - 256)
 
+(** Draws the pixel at coordinates (x,y) in the bigarray then increases x and y to point the next pixel.
+    At pixel (0,0), NMI bit is set to 0. At the last pixel, an NMI is triggered. *)
 let draw_next_pixel () =
   if draw.x = 0 && draw.y = 0 then (
     set_vblank_started false;

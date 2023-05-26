@@ -1,3 +1,8 @@
+(** First we create the required variables for graphical rendering to an SDL window,
+    then we launch the main loop of the program that runs the CPU and PPU for one
+    frame each iteration. We render to the window at the end of each frame. The
+    main loop also includes keyboard input handling. *)
+
 (* main.ml is inspired from https://github.com/DuoSRX/ocamnes/blob/master/bin/main.ml *)
 
 open CAMLNES
@@ -33,6 +38,10 @@ let key_scancode ev = Sdl.Scancode.enum Sdl.Event.(get ev keyboard_scancode)
 let quit = ref false
 let pause = ref false
 
+(** Modifies the keys currently pressed, which are given to the CPU.
+    @param keycode the key which has had a down or up event
+    @param down 0 if up, 1 if down
+    *)
 let update_input keycode ~down =
   match keycode with
   | `L -> Bus.controller1.(0) <- down

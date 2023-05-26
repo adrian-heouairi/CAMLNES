@@ -1,3 +1,8 @@
+(** Represents the CPU memory space, as an array. As the PPU registers are in this space,
+    this module also contains the current state of the PPU. Mirroring is applied.
+    This module contains special behavior when writing to special addresses.
+     *)
+
 open Ppu_constants
 
 let bus = Array.make 65536 0
@@ -11,6 +16,7 @@ type _PPU_state = {
   mutable write_toggle_w : bool;
   mutable _PPUDATA_read_buffer : int;
 }
+(** Represents the internal variables of the PPU. *)
 
 let _PPU_state =
   {
@@ -28,35 +34,51 @@ let reset_PPU_state () =
   _PPU_state.write_toggle_w <- false;
   _PPU_state._PPUDATA_read_buffer <- 0
 
+(** Applies mirroring of addresses
+    @param addr the address
+    @return the real address
+*)
 let resolve_mirror addr =
   let ret = ref addr in
   if 0x0800 <= addr && addr <= 0x1FFF then ret := addr mod 0x800;
   if 0x2008 <= addr && addr <= 0x3FFF then ret := (addr mod 8) + 0x2000;
   !ret
 
+(** Reads a byte from memory, with mirroring, but without triggering
+    special behavior when reading a special address
+    *)
 let read_raw addr =
   assert (0 <= addr && addr <= 65535);
   bus.(resolve_mirror addr)
 
+(** Writes a byte to memory, with mirroring, but without triggering
+    special behavior when writing to a special address
+    *)
 let write_raw addr byte =
   assert (0 <= addr && addr <= 65535);
   assert (0 <= byte && byte <= 255);
   bus.(resolve_mirror addr) <- byte
 
+(** Sets bit `bit` (0 is LSB) of the byte at address `addr` to `boolean` with mirroring
+    and without triggering special behavior *)
 let set_nth_bit_raw addr bit boolean =
   assert (0 <= addr && addr <= 65535);
   assert (0 <= bit && bit <= 7);
   bus.(resolve_mirror addr) <-
     Utils.set_nth_bit bit bus.(resolve_mirror addr) boolean
 
+(** Returns bit `bit` (0 is LSB) of the byte at address `addr` *)
 let get_nth_bit_raw addr bit =
   assert (0 <= addr && addr <= 65535);
   assert (0 <= bit && bit <= 7);
   Utils.nth_bit bit bus.(resolve_mirror addr)
 
+(** Returns the amount by which the VRAM address should be incremented after
+    each read or write *)
 let get_vram_addr_increment () =
   if read_raw _PPUCTRL land 0b100 = 0 then 1 else 32
 
+(** Reads a byte from memory with mirroring and special behavior for PPU registers, etc. *)
 let read addr =
   assert (0 <= addr && addr <= 65535);
   let ret = ref (-1) in
@@ -85,6 +107,7 @@ let read addr =
 
   if !ret <> -1 then !ret else bus.(real_addr)
 
+(** Launched when OAMDMA (copy of memory zone to sprite memory) is triggered *)
 let do_OAMDMA msb =
   let bus_start_addr = msb lsl 8 in
   let offset = read_raw _OAMADDR in
@@ -92,6 +115,8 @@ let do_OAMDMA msb =
     Ppumem._OAM_write ((i + offset) mod 256) (read_raw (bus_start_addr + i))
   done
 
+(** Writes a byte in the CPU address space, with mirroring and special behavior
+    for PPU registers, etc. *)
 let write addr byte =
   assert (0 <= addr && addr <= 65535);
   assert (0 <= byte && byte <= 255);

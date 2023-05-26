@@ -1,3 +1,5 @@
+(** Represents the CPU addressing modes. Usually an instruction has multiple versions,
+    each with a different addressing mode *)
 type addr_mode =
   | Immediate
   | Implicit
@@ -13,6 +15,7 @@ type addr_mode =
   | IndirectY
   | Indirect
 
+(** Returns the size of an instruction in bytes according to its addressing mode *)
 let get_instruction_size addr_mode =
   match addr_mode with
   | Immediate -> 2
@@ -29,6 +32,7 @@ let get_instruction_size addr_mode =
   | IndirectY -> 2
   | Indirect -> 3
 
+(** The list of all instruction names, including unofficial ones *)
 type instruction =
   | ADC
   | AND
@@ -190,6 +194,7 @@ let instruction_to_string instruction =
   | TAS -> "TAS"
   | XAA -> "XAA"
 
+(** Translates a byte in the cartridge code to the right instruction *)
 let decode_instruction instruction =
   match instruction with
   (* 151 official instructions *)

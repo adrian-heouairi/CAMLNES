@@ -1,3 +1,6 @@
+(** This module represents the memory space of the PPU, as well as sprite memory (OAM).
+    The mirroring is resolved, then the value is read or written. *)
+
 let memory = Array.make 0x4000 0
 
 (*let read_raw addr =
