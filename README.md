@@ -1,6 +1,6 @@
 # CAMLNES
 ## Description
-An NES emulator using OCaml (imperative style) and SDL 2. Only supports mapper 0, no sound. Super Mario Bros. is running correctly.
+Computer science degree fourth year project. An NES emulator using OCaml (imperative style) and SDL 2. Only supports mapper 0, no sound. Super Mario Bros. is running correctly.
 
 ## Setup
     sudo apt install opam; opam init
