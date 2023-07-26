@@ -2,6 +2,9 @@
 ## Description
 Computer science degree fourth year project. An NES emulator using OCaml (imperative style) and SDL 2. Only supports mapper 0, no sound. Super Mario Bros. is running correctly.
 
+Project realized by:
+- Adrian HEOUAIRI
+
 ## Setup
     sudo apt install opam; opam init
     git clone https://gaufre.informatique.univ-paris-diderot.fr/heouairi/heouairi-plong-2022.git
